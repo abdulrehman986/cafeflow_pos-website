@@ -1,0 +1,265 @@
+// CafeFlow Web Platform — Prisma schema
+// Mirrors the Supabase PostgreSQL schema in /supabase/migrations (see that folder
+// for the production DDL with native enums, partial indexes and RLS policies).
+//
+// Entity model:
+//   Profile (user, role SUPER_ADMIN|CLIENT) ──> Client ──> Restaurant ──> License
+//                                                    │                ──> Devices
+//                                                    ├──> Sales            (idempotent sync)
+//                                                    └──> Orders ──> OrderItems
+//   SyncLog records every POS synchronization batch.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────── AUTH / USERS ───────────────────────────────
+
+model Profile {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  // SUPER_ADMIN | CLIENT (validated with Zod at the service layer)
+  role         String   @default("CLIENT")
+  // Links the login account to its client business account (CLIENT role only)
+  clientId     String?  @unique
+  client       Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  resetTokens PasswordResetToken[]
+
+  @@index([role])
+  @@index([clientId])
+  @@map("profiles")
+}
+
+// Password reset tokens (forgot-password / reset-password flow)
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([profileId])
+  @@map("password_reset_tokens")
+}
+
+// ─────────────────────────────── CLIENTS ───────────────────────────────
+
+model Client {
+  id         String        @id @default(uuid())
+  // Primary contact person
+  name       String
+  email      String        @unique
+  phone      String?
+  companyName String
+  // ACTIVE | SUSPENDED | DEACTIVATED
+  status     String        @default("ACTIVE")
+  notes      String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  profiles     Profile[]
+  restaurants  Restaurant[]
+
+  @@index([status])
+  @@map("clients")
+}
+
+// ─────────────────────────────── RESTAURANTS ───────────────────────────────
+
+model Restaurant {
+  id         String   @id @default(uuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name       String
+  address    String?
+  city       String?
+  phone      String?
+  // ACTIVE | SUSPENDED | DEACTIVATED
+  status     String   @default("ACTIVE")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  licenses License[]
+  devices  Device[]
+  sales    Sale[]
+  orders   Order[]
+  syncLogs SyncLog[]
+
+  @@index([clientId])
+  @@index([status])
+  @@map("restaurants")
+}
+
+// ─────────────────────────────── LICENSES ───────────────────────────────
+// One active license per restaurant. REVOKED licenses are kept for audit
+// history and free the restaurant for a new license (enforced at app level
+// in SQLite; partial unique index in the PostgreSQL migration).
+
+model License {
+  id             String    @id @default(uuid())
+  restaurantId   String
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  licenseKey     String    @unique
+  // PENDING | ACTIVE | EXPIRED | SUSPENDED | REVOKED
+  status         String    @default("PENDING")
+  maxDevices     Int       @default(1)
+  activatedAt    DateTime?
+  expiresAt      DateTime
+  lastVerifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  devices Device[]
+
+  @@index([restaurantId])
+  @@index([status])
+  @@index([licenseKey])
+  @@index([expiresAt])
+  @@map("licenses")
+}
+
+// ─────────────────────────────── DEVICES ───────────────────────────────
+// A POS installation. deviceIdentifier is the machine identifier reported
+// by the Tauri app (hostname + machine-id). Tokens are stored hashed —
+// the raw token only exists in the POS.
+
+model Device {
+  id              String    @id @default(uuid())
+  restaurantId    String
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  licenseId       String
+  license         License    @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  deviceIdentifier String
+  deviceName      String?
+  osInfo          String?
+  appVersion      String?
+  deviceTokenHash String    @unique
+  // PENDING | ACTIVE | BLOCKED | DEACTIVATED
+  status          String    @default("ACTIVE")
+  activatedAt     DateTime  @default(now())
+  lastSeenAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([restaurantId, deviceIdentifier])
+  @@index([restaurantId])
+  @@index([licenseId])
+  @@index([status])
+  @@map("devices")
+}
+
+// ─────────────────────────────── SALES (POS SYNC) ───────────────────────────────
+// Financial transactions synced from the desktop POS.
+// (restaurant_id, local_sale_id) is UNIQUE → idempotent sync.
+
+model Sale {
+  id            String   @id @default(uuid())
+  restaurantId  String
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  localSaleId   String
+  saleNumber    String?
+  saleDate      DateTime
+  subtotal      Float    @default(0)
+  discount      Float    @default(0)
+  tax           Float    @default(0)
+  total         Float
+  // CASH | CARD | MOBILE | OTHER
+  paymentMethod String?
+  // COMPLETED | REFUNDED | CANCELLED
+  status        String   @default("COMPLETED")
+  customerCount Int?
+  syncedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@unique([restaurantId, localSaleId])
+  @@index([restaurantId, saleDate])
+  @@index([saleDate])
+  @@index([status])
+  @@map("sales")
+}
+
+// ─────────────────────────────── ORDERS (POS SYNC) ───────────────────────────────
+// Detailed order records with line items.
+// (restaurant_id, local_order_id) is UNIQUE → idempotent sync.
+
+model Order {
+  id            String   @id @default(uuid())
+  restaurantId  String
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  localOrderId  String
+  orderNumber   String
+  orderDate     DateTime
+  subtotal      Float    @default(0)
+  discount      Float    @default(0)
+  tax           Float    @default(0)
+  total         Float
+  // CASH | CARD | MOBILE | OTHER
+  paymentMethod String?
+  // PENDING | COMPLETED | REFUNDED | CANCELLED
+  status        String   @default("COMPLETED")
+  customerCount Int?
+  syncedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  items OrderItem[]
+
+  @@unique([restaurantId, localOrderId])
+  @@index([restaurantId, orderDate])
+  @@index([orderDate])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  localItemId String?
+  name        String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+  // category reported by POS for nicer grouping (optional)
+  category    String?
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+// ─────────────────────────────── SYNC LOGS ───────────────────────────────
+
+model SyncLog {
+  id              String   @id @default(uuid())
+  restaurantId    String
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  deviceId        String?
+  // SALES | ORDERS
+  recordType      String
+  recordsReceived Int      @default(0)
+  recordsCreated  Int      @default(0)
+  recordsSkipped  Int      @default(0)
+  recordsFailed   Int      @default(0)
+  // SUCCESS | PARTIAL | FAILED
+  status          String
+  message         String?
+  createdAt       DateTime @default(now())
+
+  @@index([restaurantId])
+  @@index([createdAt])
+  @@map("sync_logs")
+}
