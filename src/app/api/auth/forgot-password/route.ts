@@ -1,14 +1,18 @@
 import { NextRequest } from "next/server";
 import { ok, fail, handler } from "@/lib/api";
 import { forgotPasswordSchema } from "@/lib/validators";
-import { generateOpaqueToken, sha256 } from "@/lib/auth/password";
 import { db } from "@/lib/db";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { createPasswordResetToken } from "@/lib/auth/password-reset";
+import { sendPasswordResetEmail } from "@/lib/services/email";
 
 export const POST = handler(async (req: NextRequest) => {
   const rl = rateLimit(`forgot:${clientIp(req)}`, 5, 600);
   if (!rl.allowed) {
-    return fail("RATE_LIMITED", `Too many requests. Try again in ${rl.retryAfterSeconds}s.`);
+    return fail(
+      "RATE_LIMITED",
+      `Too many requests. Try again in ${rl.retryAfterSeconds}s.`,
+    );
   }
 
   const body = await req.json().catch(() => null);
@@ -17,26 +21,26 @@ export const POST = handler(async (req: NextRequest) => {
     return fail("VALIDATION_ERROR", "Enter a valid email address.");
   }
 
-  const profile = await db.profile.findUnique({ where: { email: parsed.data.email } });
+  const profile = await db.profile.findUnique({
+    where: { email: parsed.data.email },
+  });
 
-  // Always respond the same way — no account enumeration
-  let devToken: string | undefined;
-  if (profile) {
-    const raw = generateOpaqueToken(32);
-    await db.passwordResetToken.create({
-      data: {
-        profileId: profile.id,
-        tokenHash: sha256(raw),
-        expiresAt: new Date(Date.now() + 1000 * 60 * 30), // 30 minutes
-      },
+  if (!profile) {
+    return ok({
+      accountFound: false,
+      message: "No account was found with this email address.",
     });
-    // In production this raw token would be emailed via Supabase Auth / Resend.
-    // In this self-contained deployment it is returned once for the demo flow.
-    devToken = raw;
   }
 
+  const token = await createPasswordResetToken(profile.id);
+  await sendPasswordResetEmail({
+    recipient: profile.email,
+    recipientName: profile.fullName,
+    token,
+  });
+
   return ok({
-    message: "If an account exists for that email, a reset link has been sent.",
-    ...(devToken ? { resetToken: devToken } : {}),
+    accountFound: true,
+    message: "A password reset link has been sent to your email address.",
   });
 });
