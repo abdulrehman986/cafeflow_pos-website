@@ -24,19 +24,22 @@ export async function generateLicenseForRestaurant(opts: {
     where: { id: opts.restaurantId },
     select: { id: true, name: true, status: true, clientId: true },
   });
-  if (!restaurant) throw new LicenseError("RESTAURANT_NOT_FOUND", "Restaurant not found.");
+  if (!restaurant)
+    throw new LicenseError("RESTAURANT_NOT_FOUND", "Restaurant not found.");
   if (restaurant.status === "DEACTIVATED")
-    throw new LicenseError("CONFLICT", "Cannot issue a license for a deactivated restaurant.");
+    throw new LicenseError(
+      "CONFLICT",
+      "Cannot issue a license for a deactivated restaurant.",
+    );
 
   const existing = await getCurrentLicense(opts.restaurantId);
   if (existing)
     throw new LicenseError(
       "CONFLICT",
-      `${restaurant.name} already has a ${existing.status} license. Revoke it first to issue a new one.`
+      `${restaurant.name} already has a ${existing.status} license. Revoke it first to issue a new one.`,
     );
 
-  const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + (opts.expiresInMonths ?? 12));
+  const expiresAt = addMonths(new Date(), opts.expiresInMonths ?? 12);
 
   // Key collision is astronomically unlikely (36^12) but retry to be safe
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -57,7 +60,24 @@ export async function generateLicenseForRestaurant(opts: {
       if (code !== "P2002") throw e;
     }
   }
-  throw new LicenseError("INTERNAL_ERROR", "Could not generate a unique license key.");
+  throw new LicenseError(
+    "INTERNAL_ERROR",
+    "Could not generate a unique license key.",
+  );
+}
+
+export function addMonths(date: Date, months: number) {
+  const result = new Date(date);
+  const day = result.getDate();
+  result.setDate(1);
+  result.setMonth(result.getMonth() + months);
+  const lastDay = new Date(
+    result.getFullYear(),
+    result.getMonth() + 1,
+    0,
+  ).getDate();
+  result.setDate(Math.min(day, lastDay));
+  return result;
 }
 
 export class LicenseError extends Error {

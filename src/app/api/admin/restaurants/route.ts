@@ -3,7 +3,6 @@ import { ok, fail, handler } from "@/lib/api";
 import { requireAdminApi } from "@/lib/auth/guards";
 import { createRestaurantSchema, paginationSchema } from "@/lib/validators";
 import { listRestaurants } from "@/lib/services/restaurants";
-import { generateLicenseForRestaurant, LicenseError } from "@/lib/services/licenses";
 import { db } from "@/lib/db";
 
 export const GET = handler(async (req: NextRequest) => {
@@ -15,7 +14,8 @@ export const GET = handler(async (req: NextRequest) => {
     page: url.searchParams.get("page") ?? 1,
     pageSize: url.searchParams.get("pageSize") ?? 10,
   });
-  if (!parsed.success) return fail("VALIDATION_ERROR", "Invalid pagination parameters.");
+  if (!parsed.success)
+    return fail("VALIDATION_ERROR", "Invalid pagination parameters.");
 
   const result = await listRestaurants({
     page: parsed.data.page,
@@ -34,7 +34,10 @@ export const POST = handler(async (req: NextRequest) => {
   const body = await req.json().catch(() => null);
   const parsed = createRestaurantSchema.safeParse(body);
   if (!parsed.success) {
-    return fail("VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid input.");
+    return fail(
+      "VALIDATION_ERROR",
+      parsed.error.issues[0]?.message ?? "Invalid input.",
+    );
   }
   const input = parsed.data;
 
@@ -55,13 +58,5 @@ export const POST = handler(async (req: NextRequest) => {
     },
   });
 
-  // Optionally issue the license immediately (default 12 months, 1 device)
-  let license = null;
-  try {
-    license = await generateLicenseForRestaurant({ restaurantId: restaurant.id });
-  } catch (e) {
-    if (!(e instanceof LicenseError)) throw e;
-  }
-
-  return ok({ restaurant, license }, { status: 201 });
+  return ok({ restaurant, license: null }, { status: 201 });
 });

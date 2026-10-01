@@ -25,9 +25,16 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Plus, Check, Copy } from "lucide-react";
 
-interface ClientOption { id: string; companyName: string }
+interface ClientOption {
+  id: string;
+  companyName: string;
+}
 
-export function CreateRestaurantDialog({ clients }: { clients: ClientOption[] }) {
+export function CreateRestaurantDialog({
+  clients,
+}: {
+  clients: ClientOption[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [clientId, setClientId] = useState("");
@@ -35,11 +42,14 @@ export function CreateRestaurantDialog({ clients }: { clients: ClientOption[] })
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
   const [issueLicense, setIssueLicense] = useState(true);
-  const [months, setMonths] = useState("12");
+  const [months, setMonths] = useState("1");
   const [maxDevices, setMaxDevices] = useState("1");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<{ restaurant: string; licenseKey?: string } | null>(null);
+  const [created, setCreated] = useState<{
+    restaurant: string;
+    licenseKey?: string;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -79,11 +89,23 @@ export function CreateRestaurantDialog({ clients }: { clients: ClientOption[] })
           }),
         });
         const licJson = await licRes.json();
-        if (licJson.success) licenseKey = licJson.data.license.licenseKey;
+        if (licJson.success) {
+          licenseKey = licJson.data.license.licenseKey;
+        } else {
+          setError(
+            `Restaurant created, but the ${months}-month license could not be issued: ${
+              licJson.error?.message ??
+              "please issue it from the Licenses page."
+            }`,
+          );
+          return;
+        }
       }
 
       setCreated({ restaurant: name, licenseKey });
-      toast.success(`Restaurant "${name}" created${licenseKey ? " with license" : ""}`);
+      toast.success(
+        `Restaurant "${name}" created${licenseKey ? " with license" : ""}`,
+      );
       router.refresh();
     } catch {
       setError("Network error. Please try again.");
@@ -94,15 +116,22 @@ export function CreateRestaurantDialog({ clients }: { clients: ClientOption[] })
 
   function close() {
     setOpen(false);
-    setName(""); setCity(""); setPhone("");
-    setIssueLicense(true); setMonths("12"); setMaxDevices("1");
-    setCreated(null); setError(null);
+    setName("");
+    setCity("");
+    setPhone("");
+    setIssueLicense(true);
+    setMonths("12");
+    setMaxDevices("1");
+    setCreated(null);
+    setError(null);
   }
 
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : close())}>
       <DialogTrigger asChild>
-        <Button><Plus className="h-4 w-4" /> Add restaurant</Button>
+        <Button>
+          <Plus className="h-4 w-4" /> Add restaurant
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         {created ? (
@@ -117,17 +146,27 @@ export function CreateRestaurantDialog({ clients }: { clients: ClientOption[] })
             </DialogHeader>
             {created.licenseKey && (
               <div className="rounded-lg border bg-muted/40 p-4 text-center">
-                <p className="text-xs text-muted-foreground mb-1.5">License key</p>
-                <code className="text-lg font-bold tracking-widest">{created.licenseKey}</code>
+                <p className="text-xs text-muted-foreground mb-1.5">
+                  License key
+                </p>
+                <code className="text-lg font-bold tracking-widest">
+                  {created.licenseKey}
+                </code>
                 <Button
-                  variant="outline" size="sm" className="mt-3 w-full"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full"
                   onClick={() => {
                     navigator.clipboard.writeText(created.licenseKey!);
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}
                 >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                   {copied ? "Copied" : "Copy key"}
                 </Button>
               </div>
@@ -141,8 +180,8 @@ export function CreateRestaurantDialog({ clients }: { clients: ClientOption[] })
             <DialogHeader>
               <DialogTitle>Add a restaurant</DialogTitle>
               <DialogDescription>
-                A restaurant is an isolated workspace under a client, with its own license,
-                devices and data.
+                A restaurant is an isolated workspace under a client, with its
+                own license, devices and data.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={onSubmit} className="space-y-4">
@@ -154,51 +193,85 @@ export function CreateRestaurantDialog({ clients }: { clients: ClientOption[] })
               <div className="space-y-2">
                 <Label>Owner client</Label>
                 <Select value={clientId} onValueChange={setClientId} required>
-                  <SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a client" />
+                  </SelectTrigger>
                   <SelectContent>
                     {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.companyName}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.companyName}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {clients.length === 0 && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">No active clients — create a client first.</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    No active clients — create a client first.
+                  </p>
                 )}
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cr-name">Restaurant name</Label>
-                  <Input id="cr-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Lahore Restaurant" required />
+                  <Input
+                    id="cr-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Lahore Restaurant"
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cr-city">City</Label>
-                  <Input id="cr-city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Lahore" />
+                  <Input
+                    id="cr-city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="Lahore"
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cr-phone">Phone (optional)</Label>
-                <Input id="cr-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92 300 1234567" />
+                <Input
+                  id="cr-phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+92 300 1234567"
+                />
               </div>
 
               <div className="rounded-lg border p-4 space-y-3.5">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <Label htmlFor="cr-license" className="text-sm">Issue license now</Label>
+                    <Label htmlFor="cr-license" className="text-sm">
+                      Issue license now
+                    </Label>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Generates a secure CF-XXXX key immediately.
                     </p>
                   </div>
-                  <Switch id="cr-license" checked={issueLicense} onCheckedChange={setIssueLicense} />
+                  <Switch
+                    id="cr-license"
+                    checked={issueLicense}
+                    onCheckedChange={setIssueLicense}
+                  />
                 </div>
                 {issueLicense && (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="cr-months">Duration (months)</Label>
                       <Select value={months} onValueChange={setMonths}>
-                        <SelectTrigger id="cr-months"><SelectValue /></SelectTrigger>
+                        <SelectTrigger id="cr-months">
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
-                          {[3, 6, 12, 24, 36].map((m) => (
-                            <SelectItem key={m} value={String(m)}>{m} months</SelectItem>
+                          {[1, 3, 6, 12].map((m) => (
+                            <SelectItem key={m} value={String(m)}>
+                              {m === 12
+                                ? "1 year"
+                                : `${m} month${m === 1 ? "" : "s"}`}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -206,10 +279,14 @@ export function CreateRestaurantDialog({ clients }: { clients: ClientOption[] })
                     <div className="space-y-2">
                       <Label htmlFor="cr-devices">Max devices</Label>
                       <Select value={maxDevices} onValueChange={setMaxDevices}>
-                        <SelectTrigger id="cr-devices"><SelectValue /></SelectTrigger>
+                        <SelectTrigger id="cr-devices">
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
                           {[1, 2, 3, 5, 10].map((d) => (
-                            <SelectItem key={d} value={String(d)}>{d} terminal{d > 1 ? "s" : ""}</SelectItem>
+                            <SelectItem key={d} value={String(d)}>
+                              {d} terminal{d > 1 ? "s" : ""}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -219,9 +296,15 @@ export function CreateRestaurantDialog({ clients }: { clients: ClientOption[] })
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={close}>Cancel</Button>
-                <Button type="submit" disabled={loading || !clientId || clients.length === 0}>
-                  {loading && <Loader2 className="h-4 w-4 animate-spin" />} Create restaurant
+                <Button type="button" variant="outline" onClick={close}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading || !clientId || clients.length === 0}
+                >
+                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}{" "}
+                  Create restaurant
                 </Button>
               </DialogFooter>
             </form>
