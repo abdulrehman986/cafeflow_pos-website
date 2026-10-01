@@ -43,74 +43,88 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/*
+ * CafeFlow brand — warm amber, light & dark.
+ * Light: warm off-white surfaces, zinc text, amber-500 (#f59e0b) primary.
+ * Dark: midnight charcoal shell (matched to the CafeFlow desktop POS)
+ *   with the same amber-500 primary.
+ * amber-500 was chosen over amber-400 as the brand anchor: it reads as
+ * true amber/gold rather than yellow, and holds contrast on both themes.
+ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.75rem;
+  color-scheme: light;
+  /* Warm light shell */
+  --background: oklch(0.99 0.005 90);
+  --foreground: oklch(0.21 0.006 285.885);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.21 0.006 285.885);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  /* CafeFlow brand — deep emerald green */
-  --primary: oklch(0.51 0.11 163);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.962 0.021 165);
-  --accent-foreground: oklch(0.31 0.06 163);
+  --popover-foreground: oklch(0.21 0.006 285.885);
+  /* CafeFlow brand — amber-500 (#f59e0b) */
+  --primary: oklch(0.769 0.188 70.08);
+  --primary-foreground: oklch(0.141 0.005 285.823);
+  --secondary: oklch(0.966 0.006 88);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.004 90);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  /* Amber-100 tint for hovers / active states */
+  --accent: oklch(0.962 0.059 95.617);
+  --accent-foreground: oklch(0.415 0.112 45.904);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.51 0.11 163);
-  --chart-1: oklch(0.55 0.12 163);
-  --chart-2: oklch(0.75 0.14 70);
-  --chart-3: oklch(0.45 0.05 90);
-  --chart-4: oklch(0.7 0.1 185);
-  --chart-5: oklch(0.85 0.12 80);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.51 0.11 163);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.962 0.021 165);
-  --sidebar-accent-foreground: oklch(0.31 0.06 163);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.51 0.11 163);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.769 0.188 70.08);
+  /* Amber monochrome ramp — chart series stay on-brand */
+  --chart-1: oklch(0.769 0.188 70.08);
+  --chart-2: oklch(0.555 0.163 48.998);
+  --chart-3: oklch(0.902 0.095 95.5);
+  --chart-4: oklch(0.666 0.179 58.318);
+  --chart-5: oklch(0.828 0.189 84.429);
+  /* Sidebar sits one step warmer than the shell */
+  --sidebar: oklch(0.981 0.005 90);
+  --sidebar-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-primary: oklch(0.769 0.188 70.08);
+  --sidebar-primary-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-accent: oklch(0.962 0.059 95.617);
+  --sidebar-accent-foreground: oklch(0.415 0.112 45.904);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.769 0.188 70.08);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.72 0.13 163);
-  --primary-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.30 0.05 163);
-  --accent-foreground: oklch(0.985 0 0);
+  color-scheme: dark;
+  --background: oklch(0.19 0.005 285.8);
+  --foreground: oklch(0.97 0.005 95);
+  --card: oklch(0.235 0.005 286);
+  --card-foreground: oklch(0.97 0.005 95);
+  --popover: oklch(0.235 0.005 286);
+  --popover-foreground: oklch(0.97 0.005 95);
+  --primary: oklch(0.769 0.188 70.08);
+  --primary-foreground: oklch(0.141 0.005 285.823);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.97 0.005 95);
+  --muted: oklch(0.258 0.006 286.033);
+  --muted-foreground: oklch(0.68 0.012 286.067);
+  --accent: oklch(0.31 0.05 70);
+  --accent-foreground: oklch(0.95 0.01 95);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.72 0.13 163);
-  --chart-1: oklch(0.65 0.13 163);
-  --chart-2: oklch(0.75 0.14 70);
-  --chart-3: oklch(0.5 0.06 90);
-  --chart-4: oklch(0.7 0.1 185);
-  --chart-5: oklch(0.85 0.12 80);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.72 0.13 163);
-  --sidebar-primary-foreground: oklch(0.145 0 0);
-  --sidebar-accent: oklch(0.30 0.05 163);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.72 0.13 163);
+  --border: oklch(0.33 0.008 285.9);
+  --input: oklch(0.33 0.008 285.9);
+  --ring: oklch(0.769 0.188 70.08);
+  --chart-1: oklch(0.769 0.188 70.08);
+  --chart-2: oklch(0.828 0.189 84.429);
+  --chart-3: oklch(0.902 0.095 95.5);
+  --chart-4: oklch(0.666 0.179 58.318);
+  --chart-5: oklch(0.555 0.163 48.998);
+  --sidebar: oklch(0.17 0.005 285.8);
+  --sidebar-foreground: oklch(0.93 0.005 95);
+  --sidebar-primary: oklch(0.769 0.188 70.08);
+  --sidebar-primary-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-accent: oklch(0.28 0.045 65);
+  --sidebar-accent-foreground: oklch(0.91 0.07 95);
+  --sidebar-border: oklch(0.3 0.008 285.9);
+  --sidebar-ring: oklch(0.769 0.188 70.08);
 }
 
 @layer base {
@@ -119,5 +133,41 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  ::selection {
+    background-color: oklch(0.769 0.188 70.08 / 0.3);
+    color: oklch(0.21 0.006 285.885);
+  }
+  .dark ::selection {
+    background-color: oklch(0.769 0.188 70.08 / 0.4);
+    color: oklch(0.97 0.005 95);
+  }
+  /* Slim scrollbars, tinted per theme */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.871 0.006 286.286) transparent;
+  }
+  .dark * {
+    scrollbar-color: oklch(0.37 0.013 285.805) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.871 0.006 286.286);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.76 0.01 80);
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: oklch(0.37 0.013 285.805);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.45 0.02 285.805);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
 }

@@ -16,15 +16,15 @@ const TONES = {
   positive: "text-emerald-600 dark:text-emerald-400",
   warning: "text-amber-600 dark:text-amber-400",
   danger: "text-red-600 dark:text-red-400",
-  info: "text-teal-600 dark:text-teal-400",
+  info: "text-amber-600 dark:text-amber-300",
 };
 
 const ICON_BGS = {
   default: "bg-muted text-foreground",
-  positive: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400",
-  warning: "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400",
-  danger: "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400",
-  info: "bg-teal-50 text-teal-600 dark:bg-teal-950 dark:text-teal-400",
+  positive: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  warning: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  danger: "bg-red-500/15 text-red-600 dark:text-red-400",
+  info: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
 };
 
 export function StatCard({ title, value, sub, icon: Icon, tone = "default" }: StatCardProps) {

@@ -65,13 +65,13 @@ export default async function ClientLicensesPage() {
                     </div>
                     <div className="rounded-lg border px-3.5 py-2.5">
                       <p className="text-xs text-muted-foreground">Expiry date</p>
-                      <p className={`font-medium mt-0.5 ${eff.daysRemaining <= 30 ? "text-amber-600" : ""}`}>
+                      <p className={`font-medium mt-0.5 ${eff.daysRemaining <= 30 ? "text-amber-600 dark:text-amber-400" : ""}`}>
                         {fmtDate(license.expiresAt)}
                       </p>
                     </div>
                     <div className="rounded-lg border px-3.5 py-2.5">
                       <p className="text-xs text-muted-foreground">Days remaining</p>
-                      <p className={`font-medium mt-0.5 ${eff.daysRemaining <= 30 ? "text-amber-600" : ""}`}>
+                      <p className={`font-medium mt-0.5 ${eff.daysRemaining <= 30 ? "text-amber-600 dark:text-amber-400" : ""}`}>
                         {eff.daysRemaining} days
                       </p>
                     </div>
@@ -116,7 +116,7 @@ export default async function ClientLicensesPage() {
                   </div>
 
                   {eff.effectiveStatus === "EXPIRING_SOON" && (
-                    <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 rounded-lg px-3.5 py-2.5 flex items-center gap-2">
+                    <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/40 dark:border-amber-500/25 rounded-lg px-3.5 py-2.5 flex items-center gap-2">
                       <CalendarClock className="h-4 w-4 shrink-0" />
                       Your license expires in {eff.daysRemaining} days. Contact support to renew.
                     </p>

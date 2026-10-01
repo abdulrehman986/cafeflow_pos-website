@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Coffee, Loader2, Lock, Mail, ShieldCheck, WifiOff } from "lucide-react";
 
 function LoginForm() {
@@ -59,7 +60,7 @@ function LoginForm() {
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 px-3.5 py-2.5 text-sm text-red-700 dark:text-red-300">
+            <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-700 dark:text-red-300">
               {error}
             </div>
           )}
@@ -144,7 +145,10 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen grid place-items-center bg-muted/30 px-4 py-10">
+    <main className="relative min-h-screen grid place-items-center bg-muted/30 px-4 py-10">
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
       <Suspense>
         <LoginForm />
       </Suspense>

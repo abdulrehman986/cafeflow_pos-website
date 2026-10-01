@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
 
 export default function ForgotPasswordPage() {
@@ -41,7 +42,10 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen grid place-items-center bg-muted/30 px-4 py-10">
+    <main className="relative min-h-screen grid place-items-center bg-muted/30 px-4 py-10">
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md mx-auto">
         <div className="flex justify-center mb-6">
           <BrandLogo size="lg" />
@@ -83,7 +87,7 @@ export default function ForgotPasswordPage() {
               </form>
             ) : (
               <div className="space-y-4">
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950 px-3.5 py-3 text-sm text-emerald-800 dark:text-emerald-300">
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-3 text-sm text-emerald-700 dark:text-emerald-300">
                   If an account exists for <strong>{email}</strong>, a reset link has been created.
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">

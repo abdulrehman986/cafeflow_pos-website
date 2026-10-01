@@ -225,7 +225,7 @@ export function MultiRestaurantSection() {
                   <div className="mt-3 space-y-1.5 text-xs">
                     <p className="flex justify-between"><span className="text-muted-foreground">Today</span><span className="font-semibold tabular-nums">{r.sales}</span></p>
                     <p className="flex justify-between"><span className="text-muted-foreground">Orders</span><span className="font-semibold tabular-nums">{r.orders}</span></p>
-                    <p className="flex justify-between"><span className="text-muted-foreground">License</span><span className={r.license.includes("Expiring") ? "text-amber-600 font-medium" : "text-emerald-600 font-medium"}>{r.license}</span></p>
+                    <p className="flex justify-between"><span className="text-muted-foreground">License</span><span className={r.license.includes("Expiring") ? "text-amber-600 dark:text-amber-400 font-medium" : "text-emerald-600 dark:text-emerald-400 font-medium"}>{r.license}</span></p>
                   </div>
                 </div>
               ))}
@@ -274,7 +274,7 @@ export function LicensingSection() {
             <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
               <div className="border-b bg-muted/50 px-5 py-3 flex items-center justify-between">
                 <p className="text-sm font-semibold">License details</p>
-                <Badge className="bg-emerald-100 text-emerald-800 border-0">Active</Badge>
+                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-0">Active</Badge>
               </div>
               <div className="p-5 space-y-4">
                 <div className="rounded-xl border bg-background p-4 text-center">

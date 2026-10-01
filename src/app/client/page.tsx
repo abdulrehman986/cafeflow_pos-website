@@ -55,11 +55,11 @@ export default async function ClientDashboardPage() {
       />
 
       {(expiringRestaurants.length > 0 || expiredRestaurants.length > 0) && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950 p-4">
-          <p className="text-sm font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 dark:border-amber-500/30 p-4">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-200 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" /> License attention needed
           </p>
-          <ul className="mt-2 space-y-1 text-sm text-amber-800 dark:text-amber-300">
+          <ul className="mt-2 space-y-1 text-sm text-amber-700/90 dark:text-amber-300/90">
             {expiringRestaurants.map((r) => (
               <li key={r.id}>
                 <strong>{r.name}</strong> expires in {r.licenseDaysRemaining} day
@@ -162,7 +162,7 @@ export default async function ClientDashboardPage() {
                       {r.licenseExpiresAt && (
                         <span
                           className={`flex items-center gap-1.5 ${
-                            r.licenseStatus === "EXPIRING_SOON" || r.licenseStatus === "EXPIRED" ? "text-amber-600 font-medium" : "text-muted-foreground"
+                            r.licenseStatus === "EXPIRING_SOON" || r.licenseStatus === "EXPIRED" ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"
                           }`}
                         >
                           <CalendarClock className="h-3.5 w-3.5" />

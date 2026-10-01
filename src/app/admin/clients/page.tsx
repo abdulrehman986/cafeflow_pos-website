@@ -107,7 +107,7 @@ export default async function AdminClientsPage({
                           </p>
                         )}
                         {c.expiringLicenses > 0 && c.expiredLicenses === 0 && (
-                          <p className="text-xs text-amber-600 mt-1">
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                             {c.expiringLicenses} expiring soon
                           </p>
                         )}
