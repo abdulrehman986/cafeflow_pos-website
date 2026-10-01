@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { ArrowLeft, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 
@@ -114,7 +115,10 @@ function ResetForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <main className="min-h-screen grid place-items-center bg-muted/30 px-4 py-10">
+    <main className="relative min-h-screen grid place-items-center bg-muted/30 px-4 py-10">
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md mx-auto">
         <div className="flex justify-center mb-6">
           <BrandLogo size="lg" />

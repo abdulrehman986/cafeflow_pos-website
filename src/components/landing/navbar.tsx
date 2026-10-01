@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +55,8 @@ export function LandingNavbar() {
             ))}
           </nav>
 
-          <div className="hidden md:flex items-center gap-2.5">
+          <div className="hidden md:flex items-center gap-1.5">
+            <ThemeToggle />
             <Button asChild variant="outline" size="sm">
               <a href="#contact">Contact us</a>
             </Button>
@@ -65,14 +67,17 @@ export function LandingNavbar() {
             </Button>
           </div>
 
-          <button
-            className="lg:hidden rounded-md p-2 hover:bg-muted"
-            onClick={() => setOpen(!open)}
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-          >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle />
+            <button
+              className="lg:hidden rounded-md p-2 hover:bg-muted"
+              onClick={() => setOpen(!open)}
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+            >
+              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
       </div>
 

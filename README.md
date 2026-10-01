@@ -148,17 +148,14 @@ queue reconciliation.
 
 ---
 
-## Demo accounts (seeded)
+## Seeded account
 
 | Role | Email | Password |
 |---|---|---|
 | Super admin | `admin@cafeflow.app` | `Admin@123` |
-| Client (3 restaurants: Lahore/Islamabad/Karachi, one license expiring soon) | `ahmed@cafeflow.app` | `Client@123` |
-| All other seeded clients | `fatima@ / hassan@ / zain@ / …@cafeflow.app` | `Client@123` |
 
-Seed data is **real rows in the real database** — 9 clients, 17 restaurants,
-17 licenses (mixed statuses), devices, 30 days of sales + orders with items
-(≈5,100 records each).
+The seed creates only this super-admin profile. Client, restaurant, license,
+device, sales, order and sync-log tables are cleared first.
 
 Re-seed: `bun run scripts/seed.ts`
 

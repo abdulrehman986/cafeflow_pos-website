@@ -53,12 +53,22 @@ export const updateProfileSchema = z.object({
 
 // ─────────────────────────── Admin: clients ───────────────────────────
 
+/** Admin-set login password. Same policy as user password resets. */
+const clientPasswordPolicy = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(128)
+  .regex(/[A-Za-z]/, "Password must contain a letter")
+  .regex(/[0-9]/, "Password must contain a number");
+
 export const createClientSchema = z.object({
   name: z.string().trim().min(2, "Contact name is required").max(80),
   email,
   phone,
   companyName: z.string().trim().min(2, "Business name is required").max(120),
   notes: z.string().max(500).optional(),
+  // Optional: when omitted the server generates a strong password instead.
+  password: clientPasswordPolicy.optional(),
 });
 
 export const updateClientSchema = z.object({

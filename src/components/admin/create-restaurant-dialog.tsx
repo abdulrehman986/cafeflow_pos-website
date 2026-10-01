@@ -162,7 +162,7 @@ export function CreateRestaurantDialog({ clients }: { clients: ClientOption[] })
                   </SelectContent>
                 </Select>
                 {clients.length === 0 && (
-                  <p className="text-xs text-amber-600">No active clients — create a client first.</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">No active clients — create a client first.</p>
                 )}
               </div>
               <div className="grid sm:grid-cols-2 gap-4">

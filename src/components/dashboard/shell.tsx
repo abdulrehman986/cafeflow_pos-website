@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { logout } from "@/components/shared/logout-action";
 import {
   LayoutDashboard,
@@ -216,7 +217,10 @@ export function DashboardShell({
           </SheetContent>
         </Sheet>
         <BrandLogo size="sm" />
-        <div className="ml-auto">{userMenu}</div>
+        <div className="ml-auto flex items-center gap-1">
+          <ThemeToggle />
+          {userMenu}
+        </div>
       </div>
 
       {/* Content */}
@@ -226,7 +230,10 @@ export function DashboardShell({
           <p className="text-sm text-muted-foreground">
             {variant === "admin" ? "Platform administration" : businessName ?? "Client dashboard"}
           </p>
-          <div className="ml-auto">{userMenu}</div>
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
+            {userMenu}
+          </div>
         </div>
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl space-y-6">{children}</div>

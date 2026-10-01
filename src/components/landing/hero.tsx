@@ -9,7 +9,7 @@ function DashboardPreview() {
   const days = ["17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"];
   return (
     <div className="relative">
-      <div className="absolute -inset-6 rounded-3xl bg-primary/5 blur-2xl" aria-hidden="true" />
+      <div className="absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" aria-hidden="true" />
       <div className="relative rounded-2xl border bg-card shadow-xl overflow-hidden">
         {/* window bar */}
         <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-2.5">
@@ -24,8 +24,8 @@ function DashboardPreview() {
               <p className="text-xs text-muted-foreground">Ahmed Restaurants · Lahore</p>
               <p className="text-sm font-semibold">Today, 28 Sep</p>
             </div>
-            <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1" />
+            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15 border-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 mr-1" />
               Synced 2 min ago
             </Badge>
           </div>

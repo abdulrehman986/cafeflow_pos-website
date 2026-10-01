@@ -41,7 +41,9 @@ export const POST = handler(async (req: NextRequest) => {
   const existing = await db.client.findUnique({ where: { email: parsed.data.email } });
   if (existing) return fail("CONFLICT", "A client with this email already exists.");
 
-  const tempPassword = generatePassword();
+  // Admin sets the login credentials (email + password). If no password is
+  // supplied, a strong one is generated server-side as a fallback.
+  const password = parsed.data.password ?? generatePassword();
 
   // Create client + login account atomically
   const client = await db.client.create({
@@ -58,7 +60,7 @@ export const POST = handler(async (req: NextRequest) => {
           fullName: parsed.data.name,
           phone: parsed.data.phone || null,
           role: "CLIENT",
-          passwordHash: await hashPassword(tempPassword),
+          passwordHash: await hashPassword(password),
         },
       },
     },
@@ -68,8 +70,9 @@ export const POST = handler(async (req: NextRequest) => {
   return ok(
     {
       client,
-      // Temporary password is returned ONCE for the admin to hand over securely.
-      account: { email: parsed.data.email, temporaryPassword: tempPassword },
+      // The credentials the user will log in with (stored only as a bcrypt hash;
+      // returned once so the admin can hand them over).
+      account: { email: parsed.data.email, password },
     },
     { status: 201 }
   );

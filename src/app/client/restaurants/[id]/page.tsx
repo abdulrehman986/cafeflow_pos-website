@@ -200,7 +200,7 @@ export default async function ClientRestaurantDashboardPage({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Days remaining</span>
-                    <span className={eff!.daysRemaining <= 30 ? "text-amber-600 font-medium" : ""}>
+                    <span className={eff!.daysRemaining <= 30 ? "text-amber-600 dark:text-amber-400 font-medium" : ""}>
                       {eff!.daysRemaining}
                     </span>
                   </div>

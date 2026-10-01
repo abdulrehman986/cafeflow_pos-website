@@ -10,22 +10,24 @@ import {
 } from "lucide-react";
 
 const MAP: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
-  // clients / restaurants
-  ACTIVE: { label: "Active", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-  SUSPENDED: { label: "Suspended", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300", icon: <PauseCircle className="h-3.5 w-3.5" /> },
-  DEACTIVATED: { label: "Deactivated", cls: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300", icon: <XCircle className="h-3.5 w-3.5" /> },
+  // clients / restaurants — green = healthy (matches POS "Synced" green).
+  // Classes are dual-theme: translucent tint works on light & dark; text steps
+  // darker (-700) on light and lighter (-300) on dark for contrast.
+  ACTIVE: { label: "Active", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
+  SUSPENDED: { label: "Suspended", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300", icon: <PauseCircle className="h-3.5 w-3.5" /> },
+  DEACTIVATED: { label: "Deactivated", cls: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300", icon: <XCircle className="h-3.5 w-3.5" /> },
   // licenses
-  PENDING: { label: "Pending", cls: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300", icon: <Clock className="h-3.5 w-3.5" /> },
-  EXPIRED: { label: "Expired", cls: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300", icon: <XCircle className="h-3.5 w-3.5" /> },
-  REVOKED: { label: "Revoked", cls: "bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200", icon: <XCircle className="h-3.5 w-3.5" /> },
-  EXPIRING_SOON: { label: "Expiring soon", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300", icon: <AlertTriangle className="h-3.5 w-3.5" /> },
-  NONE: { label: "No license", cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400", icon: <CircleDashed className="h-3.5 w-3.5" /> },
+  PENDING: { label: "Pending", cls: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300", icon: <Clock className="h-3.5 w-3.5" /> },
+  EXPIRED: { label: "Expired", cls: "bg-red-500/15 text-red-700 dark:text-red-300", icon: <XCircle className="h-3.5 w-3.5" /> },
+  REVOKED: { label: "Revoked", cls: "bg-red-500/20 text-red-700 dark:text-red-300", icon: <XCircle className="h-3.5 w-3.5" /> },
+  EXPIRING_SOON: { label: "Expiring soon", cls: "bg-orange-500/15 text-orange-700 dark:text-orange-300", icon: <AlertTriangle className="h-3.5 w-3.5" /> },
+  NONE: { label: "No license", cls: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400", icon: <CircleDashed className="h-3.5 w-3.5" /> },
   // devices
-  BLOCKED: { label: "Blocked", cls: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300", icon: <XCircle className="h-3.5 w-3.5" /> },
+  BLOCKED: { label: "Blocked", cls: "bg-red-500/15 text-red-700 dark:text-red-300", icon: <XCircle className="h-3.5 w-3.5" /> },
   // orders
-  COMPLETED: { label: "Completed", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-  REFUNDED: { label: "Refunded", cls: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300", icon: <PauseCircle className="h-3.5 w-3.5" /> },
-  CANCELLED: { label: "Cancelled", cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400", icon: <XCircle className="h-3.5 w-3.5" /> },
+  COMPLETED: { label: "Completed", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
+  REFUNDED: { label: "Refunded", cls: "bg-orange-500/15 text-orange-700 dark:text-orange-300", icon: <PauseCircle className="h-3.5 w-3.5" /> },
+  CANCELLED: { label: "Cancelled", cls: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400", icon: <XCircle className="h-3.5 w-3.5" /> },
 };
 
 const METHOD_LABELS: Record<string, string> = {
@@ -33,7 +35,7 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
-  const conf = MAP[status] ?? { label: status, cls: "bg-zinc-100 text-zinc-600", icon: <CircleDashed className="h-3.5 w-3.5" /> };
+  const conf = MAP[status] ?? { label: status, cls: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300", icon: <CircleDashed className="h-3.5 w-3.5" /> };
   return (
     <span
       className={cn(

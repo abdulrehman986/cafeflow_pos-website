@@ -119,7 +119,7 @@ export default async function AdminLicensesPage({
                         <TableCell><StatusBadge status={eff.effectiveStatus} /></TableCell>
                         <TableCell className="text-sm">
                           {fmtDate(l.expiresAt)}
-                          <p className={`text-xs ${eff.daysRemaining <= 30 ? "text-amber-600" : "text-muted-foreground"}`}>
+                          <p className={`text-xs ${eff.daysRemaining <= 30 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
                             {l.status === "REVOKED" ? "—" : `${eff.daysRemaining} days left`}
                           </p>
                         </TableCell>
