@@ -15,7 +15,11 @@ const phone = z
   .optional()
   .or(z.literal(""));
 
-const email = z.string().trim().toLowerCase().email("Enter a valid email address");
+const email = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .email("Enter a valid email address");
 
 // ─────────────────────────── Auth ───────────────────────────
 
@@ -80,6 +84,11 @@ export const updateClientSchema = z.object({
   status: z.enum(CLIENT_STATUSES).optional(),
 });
 
+export const adminPasswordResetSchema = z.object({
+  mode: z.enum(["LINK", "TEMPORARY"]).default("LINK"),
+  password: clientPasswordPolicy.optional(),
+});
+
 // ─────────────────────────── Admin: restaurants ───────────────────────────
 
 export const createRestaurantSchema = z.object({
@@ -102,7 +111,12 @@ export const updateRestaurantSchema = z.object({
 
 export const generateLicenseSchema = z.object({
   restaurantId: z.string().uuid("Select a restaurant"),
-  maxDevices: z.coerce.number().int().min(1, "At least 1 device").max(20).default(1),
+  maxDevices: z.coerce
+    .number()
+    .int()
+    .min(1, "At least 1 device")
+    .max(20)
+    .default(1),
   expiresInMonths: z.coerce.number().int().min(1).max(60).default(12),
 });
 
@@ -126,7 +140,10 @@ export const posActivateSchema = z.object({
   licenseKey: z
     .string()
     .trim()
-    .regex(/^CF-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i, "License key must look like CF-XXXX-XXXX-XXXX"),
+    .regex(
+      /^CF-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i,
+      "License key must look like CF-XXXX-XXXX-XXXX",
+    ),
   deviceIdentifier: z.string().trim().min(3).max(100),
   deviceName: z.string().trim().max(100).optional(),
   osInfo: z.string().trim().max(150).optional(),
@@ -142,7 +159,9 @@ export const posVerifySchema = z.object({
 export const posSaleRecordSchema = z.object({
   localSaleId: z.string().min(1, "localSaleId is required").max(64),
   saleNumber: z.string().max(40).optional(),
-  saleDate: z.string().datetime({ offset: true }, { message: "saleDate must be ISO 8601" }),
+  saleDate: z
+    .string()
+    .datetime({ offset: true }, { message: "saleDate must be ISO 8601" }),
   subtotal: z.coerce.number().min(0).optional().default(0),
   discount: z.coerce.number().min(0).optional().default(0),
   tax: z.coerce.number().min(0).optional().default(0),
@@ -169,7 +188,9 @@ export const posOrderItemSchema = z.object({
 export const posOrderRecordSchema = z.object({
   localOrderId: z.string().min(1, "localOrderId is required").max(64),
   orderNumber: z.string().min(1).max(40),
-  orderDate: z.string().datetime({ offset: true }, { message: "orderDate must be ISO 8601" }),
+  orderDate: z
+    .string()
+    .datetime({ offset: true }, { message: "orderDate must be ISO 8601" }),
   subtotal: z.coerce.number().min(0).optional().default(0),
   discount: z.coerce.number().min(0).optional().default(0),
   tax: z.coerce.number().min(0).optional().default(0),

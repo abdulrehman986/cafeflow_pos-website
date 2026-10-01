@@ -208,16 +208,29 @@ src/components/                 landing/ · dashboard/ · admin/ · client/ · s
 - [x] Zod validation on every API input; predictable error codes
 - [x] Rate limiting on login, reset, activation, verification and sync
 - [x] Secrets only in environment variables (`AUTH_SECRET`, `POS_TOKEN_SECRET`,
-      `DATABASE_URL`); nothing sensitive in client bundles
+      `DATABASE_URL`, SMTP credentials); nothing sensitive in client bundles
 - [x] Supabase RLS deny-by-default; service key stays server-side
 
 ## Environment variables
 
 ```
-DATABASE_URL=…          # SQLite file here; Supabase Postgres URL in production
+DATABASE_URL=…          # MySQL/TiDB application database URL
 AUTH_SECRET=…           # session JWT signing secret
 POS_TOKEN_SECRET=…      # device token signing secret (separate rotation domain)
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your-gmail-account@gmail.com
+SMTP_PASS=…             # Google App Password, not the normal Gmail password
+MAIL_FROM=CafeFlow <your-gmail-account@gmail.com>
+APP_URL=https://your-cafeflow-domain.example
 ```
+
+Copy `.env.example` to `.env` and replace the placeholders. For Gmail, enable
+2-Step Verification and create an App Password for `SMTP_PASS`. The `APP_URL`
+value must be the public URL users open from their reset emails. Password reset
+links expire after 30 minutes and can only be used once.
 
 ## Scripts
 

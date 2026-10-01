@@ -1,21 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    accountFound: boolean;
+    message: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
@@ -33,7 +40,7 @@ export default function ForgotPasswordPage() {
         setError(json.error?.message ?? "Request failed.");
         return;
       }
-      setSent(json.data.resetToken ?? "sent");
+      setResult(json.data);
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -58,7 +65,7 @@ export default function ForgotPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {sent === null ? (
+            {!result ? (
               <form onSubmit={onSubmit} className="space-y-4">
                 {error && (
                   <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 px-3.5 py-2.5 text-sm text-red-700 dark:text-red-300">
@@ -87,30 +94,35 @@ export default function ForgotPasswordPage() {
               </form>
             ) : (
               <div className="space-y-4">
-                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-3 text-sm text-emerald-700 dark:text-emerald-300">
-                  If an account exists for <strong>{email}</strong>, a reset link has been created.
+                <div
+                  className={
+                    result.accountFound
+                      ? "rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-3 text-sm text-emerald-700 dark:text-emerald-300"
+                      : "rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 text-sm text-amber-700 dark:text-amber-300"
+                  }
+                >
+                  {result.message}
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  This deployment does not send outbound email, so your one-time reset token is
-                  provided here. In production this arrives by email (Supabase Auth / SMTP provider).
-                </p>
-                {sent !== "sent" && (
-                  <div className="rounded-lg border bg-muted/50 p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Reset token</p>
-                    <code className="text-xs break-all">{sent}</code>
-                  </div>
+                {result.accountFound && (
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Check your inbox and follow the link to choose a new
+                    password. The link expires in 30 minutes.
+                  </p>
                 )}
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => router.push(`/reset-password?token=${encodeURIComponent(sent)}`)}
+                  onClick={() => setResult(null)}
                 >
-                  Continue to reset form
+                  Try another email
                 </Button>
               </div>
             )}
             <p className="mt-6 text-center text-xs text-muted-foreground">
-              <Link href="/login" className="inline-flex items-center gap-1 hover:text-foreground">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1 hover:text-foreground"
+              >
                 <ArrowLeft className="h-3 w-3" /> Back to sign in
               </Link>
             </p>
