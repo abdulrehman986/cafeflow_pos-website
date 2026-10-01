@@ -25,15 +25,15 @@ async function main() {
 
   await db.profile.create({
     data: {
-      email: "admin@cafeflow.app",
+      email: "cafeflow72@gmail.com",
       fullName: "CafeFlow Admin",
-      phone: "+92 321 0000000",
+      phone: "+92 309 6345662",
       role: "SUPER_ADMIN",
       passwordHash: await bcrypt.hash("Admin@123", 12),
     },
   });
 
-  console.log("Done: 1 super admin (admin@cafeflow.app / Admin@123)");
+  console.log("Done: 1 super admin (cafeflow72@gmail.com / Admin@123)");
 }
 
 main()
