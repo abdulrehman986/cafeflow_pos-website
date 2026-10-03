@@ -244,6 +244,8 @@ export interface SyncOutcome {
   /** FAILED = not stored — the POS keeps the record queued and retries.
    * Only CREATED / SKIPPED_DUPLICATE mean "safely stored". */
   action: "CREATED" | "SKIPPED_DUPLICATE" | "FAILED";
+  /** Present on FAILED — server-side reason, for POS diagnostics. */
+  error?: string;
 }
 
 /** True when a create failed only because the record already exists
@@ -310,7 +312,8 @@ export async function syncSales(
         skipped++;
       } else {
         // Transient/unknown DB failure — the POS must keep this record.
-        outcomes.push({ localId: sale.localSaleId, action: "FAILED" });
+        console.error(`[pos-sync] sales insert failed for ${sale.localSaleId}:`, error);
+        outcomes.push({ localId: sale.localSaleId, action: "FAILED", error: error instanceof Error ? error.message.slice(0, 200) : "insert failed" });
         failed++;
       }
     }
@@ -407,7 +410,8 @@ export async function syncOrders(
         skipped++;
       } else {
         // Transient/unknown DB failure — the POS must keep this record.
-        outcomes.push({ localId: order.localOrderId, action: "FAILED" });
+        console.error(`[pos-sync] orders insert failed for ${order.localOrderId}:`, error);
+        outcomes.push({ localId: order.localOrderId, action: "FAILED", error: error instanceof Error ? error.message.slice(0, 200) : "insert failed" });
         failed++;
       }
     }
@@ -495,7 +499,9 @@ export async function syncShifts(
         outcomes.push({ localId: shift.localShiftId, action: "SKIPPED_DUPLICATE" });
         skipped++;
       } else {
-        outcomes.push({ localId: shift.localShiftId, action: "FAILED" });
+        // Transient/unknown DB failure — the POS must keep this record.
+        console.error(`[pos-sync] shifts insert failed for ${shift.localShiftId}:`, error);
+        outcomes.push({ localId: shift.localShiftId, action: "FAILED", error: error instanceof Error ? error.message.slice(0, 200) : "insert failed" });
         failed++;
       }
     }
@@ -573,7 +579,9 @@ export async function syncRefunds(
         outcomes.push({ localId: refund.localRefundId, action: "SKIPPED_DUPLICATE" });
         skipped++;
       } else {
-        outcomes.push({ localId: refund.localRefundId, action: "FAILED" });
+        // Transient/unknown DB failure — the POS must keep this record.
+        console.error(`[pos-sync] refunds insert failed for ${refund.localRefundId}:`, error);
+        outcomes.push({ localId: refund.localRefundId, action: "FAILED", error: error instanceof Error ? error.message.slice(0, 200) : "insert failed" });
         failed++;
       }
     }
@@ -645,7 +653,9 @@ export async function syncExpenses(
         outcomes.push({ localId: expense.localExpenseId, action: "SKIPPED_DUPLICATE" });
         skipped++;
       } else {
-        outcomes.push({ localId: expense.localExpenseId, action: "FAILED" });
+        // Transient/unknown DB failure — the POS must keep this record.
+        console.error(`[pos-sync] expenses insert failed for ${expense.localExpenseId}:`, error);
+        outcomes.push({ localId: expense.localExpenseId, action: "FAILED", error: error instanceof Error ? error.message.slice(0, 200) : "insert failed" });
         failed++;
       }
     }
