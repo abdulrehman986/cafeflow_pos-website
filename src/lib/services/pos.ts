@@ -435,7 +435,7 @@ export async function syncOrders(
   return { outcomes, created, skipped, failed, status };
 }
 
-// ─────────────────────── Shift / Refund / Expense sync ───────────────────────
+// ─────────────────────── Shift / Expense sync ───────────────────────
 
 export async function syncShifts(
   ctx: PosContext,
@@ -519,86 +519,6 @@ export async function syncShifts(
       recordsFailed: failed,
       status,
       message: `Synced ${created} new / ${skipped} duplicate shifts for ${ctx.restaurant.name}`,
-    },
-  });
-
-  return { outcomes, created, skipped, failed, status };
-}
-
-export async function syncRefunds(
-  ctx: PosContext,
-  refunds: Array<{
-    localRefundId: string;
-    localOrderId?: string;
-    localSaleId?: string;
-    orderNumber?: string;
-    amount: number;
-    reason?: string;
-    refundedAt: string;
-    cashierName?: string;
-    supervisorName?: string;
-    shiftLocalId?: string;
-  }>
-) {
-  const outcomes: SyncOutcome[] = [];
-  let created = 0;
-  let skipped = 0;
-  let failed = 0;
-
-  for (const refund of refunds) {
-    try {
-      const existing = await db.refund.findUnique({
-        where: { restaurantId_localRefundId: { restaurantId: ctx.restaurant.id, localRefundId: refund.localRefundId } },
-        select: { id: true },
-      });
-      if (existing) {
-        outcomes.push({ localId: refund.localRefundId, action: "SKIPPED_DUPLICATE" });
-        skipped++;
-        continue;
-      }
-      await db.refund.create({
-        data: {
-          restaurantId: ctx.restaurant.id,
-          localRefundId: refund.localRefundId,
-          localOrderId: refund.localOrderId,
-          localSaleId: refund.localSaleId,
-          orderNumber: refund.orderNumber,
-          amount: refund.amount,
-          reason: refund.reason,
-          refundedAt: new Date(refund.refundedAt),
-          cashierName: refund.cashierName,
-          supervisorName: refund.supervisorName,
-          shiftLocalId: refund.shiftLocalId,
-          syncedAt: new Date(),
-        },
-      });
-      outcomes.push({ localId: refund.localRefundId, action: "CREATED" });
-      created++;
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        outcomes.push({ localId: refund.localRefundId, action: "SKIPPED_DUPLICATE" });
-        skipped++;
-      } else {
-        // Transient/unknown DB failure — the POS must keep this record.
-        console.error(`[pos-sync] refunds insert failed for ${refund.localRefundId}:`, error);
-        outcomes.push({ localId: refund.localRefundId, action: "FAILED", error: error instanceof Error ? error.message.slice(0, 200) : "insert failed" });
-        failed++;
-      }
-    }
-  }
-
-  const status = failed > 0 ? "PARTIAL" : "SUCCESS";
-  await db.syncLog.create({
-    data: {
-      restaurantId: ctx.restaurant.id,
-      deviceId: ctx.device.id,
-      recordType: "REFUNDS",
-      recordsReceived: refunds.length,
-      recordsCreated: created,
-      recordsSkipped: skipped,
-      recordsFailed: failed,
-      status,
-      message: `Synced ${created} new / ${skipped} duplicate refunds for ${ctx.restaurant.name}`,
     },
   });
 

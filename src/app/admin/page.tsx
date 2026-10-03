@@ -12,10 +12,9 @@ import {
   getTopRestaurants,
   getPosSyncOverview,
   listRecentShifts,
-  listRecentRefunds,
   listRecentExpenses,
 } from "@/lib/services/dashboard";
-import { formatRs, formatNumber, fmtDate } from "@/lib/format";
+import { formatRs, formatNumber, fmtDate, fmtDateTime } from "@/lib/format";
 import {
   Users,
   Store,
@@ -34,14 +33,13 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const [overview, trend, paymentSplit, topRestaurants, posSync, recentShifts, recentRefunds, recentExpenses] = await Promise.all([
+  const [overview, trend, paymentSplit, topRestaurants, posSync, recentShifts, recentExpenses] = await Promise.all([
     getAdminOverview(),
     getAdminSalesTrend(14),
     getAdminPaymentSplit(),
     getTopRestaurants(5),
     getPosSyncOverview(),
     listRecentShifts(5),
-    listRecentRefunds(5),
     listRecentExpenses(5),
   ]);
 
@@ -207,21 +205,14 @@ export default async function AdminDashboardPage() {
         </Card>
       </div>
 
-      {/* POS terminal sync — shifts, refunds and expenses uploaded by the desktop POS */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* POS terminal sync — shifts and expenses uploaded by the desktop POS */}
+      <div className="grid gap-4 sm:grid-cols-2">
         <StatCard
           title="Shifts synced"
           value={formatNumber(posSync.shifts)}
           sub={posSync.lastSyncedAt ? `Last POS upload ${fmtDateTime(posSync.lastSyncedAt)}` : "Waiting for the first POS sync"}
           icon={Clock}
           tone="info"
-        />
-        <StatCard
-          title="Refunds synced"
-          value={formatNumber(posSync.refunds)}
-          sub="Issued on POS terminals and uploaded here"
-          icon={Receipt}
-          tone={posSync.refunds > 0 ? "warning" : "default"}
         />
         <StatCard
           title="Expenses synced"
@@ -235,10 +226,10 @@ export default async function AdminDashboardPage() {
         <CardHeader className="pb-3">
           <CardTitle>Latest POS terminal activity</CardTitle>
           <CardDescription>
-            Shift closings, refunds and expenses synced from your POS devices
+            Shift closings and expenses synced from your POS devices
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-6 lg:grid-cols-3">
+        <CardContent className="grid gap-6 lg:grid-cols-2">
           <div>
             <p className="text-sm font-medium mb-2">Recent shifts</p>
             {recentShifts.length === 0 ? (
@@ -264,31 +255,6 @@ export default async function AdminDashboardPage() {
                         diff {(s.cashDifference ?? 0).toFixed(2)}
                       </p>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div>
-            <p className="text-sm font-medium mb-2">Recent refunds</p>
-            {recentRefunds.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-6 text-center border rounded-lg border-dashed">
-                No refunds synced yet.
-              </p>
-            ) : (
-              <ul className="divide-y">
-                {recentRefunds.map((r) => (
-                  <li key={r.id} className="py-2.5 flex items-center gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{r.restaurant.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {fmtDate(r.refundedAt)} · {r.reason || "No reason given"}
-                      </p>
-                    </div>
-                    <p className="text-sm font-semibold tabular-nums text-red-500">
-                      −{formatRs(r.amount)}
-                    </p>
                   </li>
                 ))}
               </ul>

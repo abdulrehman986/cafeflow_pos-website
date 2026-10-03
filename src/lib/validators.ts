@@ -238,30 +238,6 @@ export const posShiftsSyncSchema = z.object({
   batchId: z.string().max(64).optional(),
 });
 
-export const posRefundRecordSchema = z.object({
-  localRefundId: z.string().min(1, "localRefundId is required").max(64),
-  // Composite local ids of the affected sale/order on the POS device
-  localOrderId: z.string().max(64).optional(),
-  localSaleId: z.string().max(64).optional(),
-  orderNumber: z.string().max(40).optional(),
-  amount: z.coerce.number().min(0),
-  reason: z.string().max(500).optional(),
-  refundedAt: z
-    .string()
-    .datetime({ offset: true }, { message: "refundedAt must be ISO 8601" }),
-  cashierName: z.string().max(80).optional(),
-  supervisorName: z.string().max(80).optional(),
-  shiftLocalId: z.string().max(64).optional(),
-});
-
-export const posRefundsSyncSchema = z.object({
-  refunds: z
-    .array(posRefundRecordSchema)
-    .min(1, "No refunds provided")
-    .max(500),
-  batchId: z.string().max(64).optional(),
-});
-
 export const posExpenseRecordSchema = z.object({
   localExpenseId: z.string().min(1, "localExpenseId is required").max(64),
   date: z
