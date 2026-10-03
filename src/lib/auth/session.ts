@@ -1,6 +1,14 @@
 import { cookies } from "next/headers";
-import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, ROLES } from "@/lib/constants";
-import { signSessionToken, verifySessionToken, type SessionClaims } from "./jwt";
+import {
+  SESSION_COOKIE,
+  SESSION_MAX_AGE_SECONDS,
+  ROLES,
+} from "@/lib/constants";
+import {
+  signSessionToken,
+  verifySessionToken,
+  type SessionClaims,
+} from "./jwt";
 import { db } from "@/lib/db";
 
 export interface SessionUser {
@@ -20,7 +28,7 @@ export async function createSession(user: {
 }) {
   const token = await signSessionToken(
     { sub: user.id, role: user.role, clientId: user.clientId },
-    SESSION_MAX_AGE_SECONDS
+    SESSION_MAX_AGE_SECONDS,
   );
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
@@ -49,22 +57,29 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const claims: SessionClaims | null = await verifySessionToken(token);
   if (!claims) return null;
 
-  const profile = await db.profile.findUnique({
-    where: { id: claims.sub },
-    select: {
-      id: true,
-      email: true,
-      fullName: true,
-      role: true,
-      clientId: true,
-      phone: true,
-      isActive: true,
-      client: { select: { status: true } },
-    },
-  });
+  let profile;
+  try {
+    profile = await db.profile.findUnique({
+      where: { id: claims.sub },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        clientId: true,
+        phone: true,
+        isActive: true,
+        client: { select: { status: true } },
+      },
+    });
+  } catch (error) {
+    console.error("[auth] Database unavailable during session lookup", error);
+    return null;
+  }
   if (!profile || !profile.isActive) return null;
   // A suspended client business also blocks its login account
-  if (profile.role === ROLES.CLIENT && profile.client?.status !== "ACTIVE") return null;
+  if (profile.role === ROLES.CLIENT && profile.client?.status !== "ACTIVE")
+    return null;
 
   return {
     profileId: profile.id,

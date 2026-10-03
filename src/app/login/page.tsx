@@ -7,10 +7,23 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { Coffee, Loader2, Lock, Mail, ShieldCheck, WifiOff } from "lucide-react";
+import {
+  Coffee,
+  Loader2,
+  Lock,
+  Mail,
+  ShieldCheck,
+  WifiOff,
+} from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -84,7 +97,10 @@ function LoginForm() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-primary hover:underline"
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -103,41 +119,29 @@ function LoginForm() {
               </div>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4" />
+              )}
               {loading ? "Signing in…" : "Sign in"}
             </Button>
           </form>
-
-          <div className="mt-6 rounded-lg border border-dashed bg-muted/40 p-3.5">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Demo accounts</p>
-            <div className="grid gap-1.5 text-xs">
-              <button
-                type="button"
-                className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-background transition-colors text-left"
-                onClick={() => { setEmail("admin@cafeflow.app"); setPassword("Admin@123"); }}
-              >
-                <span className="font-medium">Super Admin</span>
-                <span className="text-muted-foreground">admin@cafeflow.app / Admin@123</span>
-              </button>
-              <button
-                type="button"
-                className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-background transition-colors text-left"
-                onClick={() => { setEmail("ahmed@cafeflow.app"); setPassword("Client@123"); }}
-              >
-                <span className="font-medium">Client · 3 restaurants</span>
-                <span className="text-muted-foreground">ahmed@cafeflow.app / Client@123</span>
-              </button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
       <div className="mt-6 flex items-center justify-center gap-6 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><WifiOff className="h-3.5 w-3.5" /> POS works offline</span>
-        <span className="inline-flex items-center gap-1.5"><Coffee className="h-3.5 w-3.5" /> Made for restaurants</span>
+        <span className="inline-flex items-center gap-1.5">
+          <WifiOff className="h-3.5 w-3.5" /> POS works offline
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Coffee className="h-3.5 w-3.5" /> Made for restaurants
+        </span>
       </div>
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        <Link href="/" className="hover:text-foreground">← Back to cafeflow.app</Link>
+        <Link href="/" className="hover:text-foreground">
+          ← Back to cafeflow.app
+        </Link>
       </p>
     </div>
   );

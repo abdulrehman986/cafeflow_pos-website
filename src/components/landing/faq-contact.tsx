@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Mail, MapPin, Phone, Send } from "lucide-react";
+import { Loader2, Mail, MapPin, Phone, Send } from "lucide-react";
 
 const FAQS = [
   {
@@ -55,13 +55,16 @@ export function FaqSection() {
             Frequently asked questions
           </h2>
           <p className="mt-4 text-base text-muted-foreground">
-            Everything owners usually ask before switching their tills to CafeFlow.
+            Everything owners usually ask before switching their tills to
+            CafeFlow.
           </p>
         </div>
         <Accordion type="single" collapsible className="mt-10">
           {FAQS.map((f, i) => (
             <AccordionItem key={f.q} value={`item-${i}`}>
-              <AccordionTrigger className="text-left text-[15px]">{f.q}</AccordionTrigger>
+              <AccordionTrigger className="text-left text-[15px]">
+                {f.q}
+              </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed text-sm">
                 {f.a}
               </AccordionContent>
@@ -77,14 +80,34 @@ export function ContactSection() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    // Opens the visitor's own email client — no unclaimed data is stored by us.
-    const subject = encodeURIComponent(`CafeFlow enquiry from ${name}`);
-    const body = encodeURIComponent(`${message}\n\n— ${name} (${email})`);
-    window.location.href = `mailto:support@cafeflow.app?subject=${subject}&body=${body}`;
-    toast.success("Opening your email app…");
+    setSending(true);
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, message }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        toast.error(result.error?.message ?? "Message could not be sent.");
+        return;
+      }
+
+      toast.success("Message sent successfully.");
+      setName("");
+      setEmail("");
+      setMessage("");
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -96,14 +119,26 @@ export function ContactSection() {
               Talk to the CafeFlow team
             </h2>
             <p className="mt-4 text-base text-muted-foreground leading-relaxed">
-              Licensing questions, multi-location rollouts or a demo for your cafe — we reply
-              within one business day.
+              Licensing questions, multi-location rollouts or a demo for your
+              cafe — we reply within one business day.
             </p>
             <div className="mt-8 space-y-4">
               {[
-                { icon: Mail, label: "Email", value: "support@cafeflow.app" },
-                { icon: Phone, label: "Phone", value: "+92 300 000 0000 (Mon–Sat, 10:00–19:00 PKT)" },
-                { icon: MapPin, label: "Office", value: "Gulberg III, Lahore, Pakistan" },
+                {
+                  icon: Mail,
+                  label: "Email",
+                  value: "cafeflow72@gmail.com",
+                },
+                {
+                  icon: Phone,
+                  label: "Phone",
+                  value: "+92 309 6345662 (Mon–Sat, 10:00–19:00 PKT)",
+                },
+                {
+                  icon: MapPin,
+                  label: "Office",
+                  value: "Gulberg III, Lahore, Pakistan",
+                },
               ].map((c) => (
                 <div key={c.label} className="flex items-center gap-3.5">
                   <div className="rounded-lg bg-primary/10 text-primary p-2.5">
@@ -124,11 +159,24 @@ export function ContactSection() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="c-name">Your name</Label>
-                    <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ahmed Raza" required />
+                    <Input
+                      id="c-name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Ahmed Raza"
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="c-email">Email</Label>
-                    <Input id="c-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@business.com" required />
+                    <Input
+                      id="c-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@business.com"
+                      required
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -142,8 +190,13 @@ export function ContactSection() {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full">
-                  <Send className="h-4 w-4" /> Send message
+                <Button type="submit" className="w-full" disabled={sending}>
+                  {sending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  {sending ? "Sending..." : "Send message"}
                 </Button>
               </form>
             </CardContent>
