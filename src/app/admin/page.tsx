@@ -10,6 +10,10 @@ import {
   getAdminSalesTrend,
   getAdminPaymentSplit,
   getTopRestaurants,
+  getPosSyncOverview,
+  listRecentShifts,
+  listRecentRefunds,
+  listRecentExpenses,
 } from "@/lib/services/dashboard";
 import { formatRs, formatNumber, fmtDate } from "@/lib/format";
 import {
@@ -22,16 +26,23 @@ import {
   TrendingUp,
   ArrowRight,
   Building2,
+  Clock,
+  Receipt,
+  Wallet,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const [overview, trend, paymentSplit, topRestaurants] = await Promise.all([
+  const [overview, trend, paymentSplit, topRestaurants, posSync, recentShifts, recentRefunds, recentExpenses] = await Promise.all([
     getAdminOverview(),
     getAdminSalesTrend(14),
     getAdminPaymentSplit(),
     getTopRestaurants(5),
+    getPosSyncOverview(),
+    listRecentShifts(5),
+    listRecentRefunds(5),
+    listRecentExpenses(5),
   ]);
 
   return (
@@ -195,6 +206,121 @@ export default async function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* POS terminal sync — shifts, refunds and expenses uploaded by the desktop POS */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          title="Shifts synced"
+          value={formatNumber(posSync.shifts)}
+          sub={posSync.lastSyncedAt ? `Last POS upload ${fmtDateTime(posSync.lastSyncedAt)}` : "Waiting for the first POS sync"}
+          icon={Clock}
+          tone="info"
+        />
+        <StatCard
+          title="Refunds synced"
+          value={formatNumber(posSync.refunds)}
+          sub="Issued on POS terminals and uploaded here"
+          icon={Receipt}
+          tone={posSync.refunds > 0 ? "warning" : "default"}
+        />
+        <StatCard
+          title="Expenses synced"
+          value={formatNumber(posSync.expenses)}
+          sub="Cash expenses recorded on POS terminals"
+          icon={Wallet}
+        />
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle>Latest POS terminal activity</CardTitle>
+          <CardDescription>
+            Shift closings, refunds and expenses synced from your POS devices
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-3">
+          <div>
+            <p className="text-sm font-medium mb-2">Recent shifts</p>
+            {recentShifts.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-6 text-center border rounded-lg border-dashed">
+                No shifts synced yet.
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {recentShifts.map((s) => (
+                  <li key={s.id} className="py-2.5 flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">
+                        {s.restaurant.name}
+                        {s.shiftNumber ? <span className="text-muted-foreground"> · Shift #{s.shiftNumber}</span> : null}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {fmtDate(s.openedAt)} · {s.cashierName ?? "—"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold tabular-nums">{formatRs(s.netSales ?? 0)}</p>
+                      <p className={`text-xs tabular-nums ${Math.abs(s.cashDifference ?? 0) < 0.005 ? "text-muted-foreground" : "text-red-500"}`}>
+                        diff {(s.cashDifference ?? 0).toFixed(2)}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <p className="text-sm font-medium mb-2">Recent refunds</p>
+            {recentRefunds.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-6 text-center border rounded-lg border-dashed">
+                No refunds synced yet.
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {recentRefunds.map((r) => (
+                  <li key={r.id} className="py-2.5 flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{r.restaurant.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {fmtDate(r.refundedAt)} · {r.reason || "No reason given"}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold tabular-nums text-red-500">
+                      −{formatRs(r.amount)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <p className="text-sm font-medium mb-2">Recent expenses</p>
+            {recentExpenses.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-6 text-center border rounded-lg border-dashed">
+                No expenses synced yet.
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {recentExpenses.map((e) => (
+                  <li key={e.id} className="py-2.5 flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{e.restaurant.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {fmtDate(e.date)} · {e.description || e.category || "Expense"}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold tabular-nums">
+                      {formatRs(e.amount)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </>
   );
 }

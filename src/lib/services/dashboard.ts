@@ -358,3 +358,47 @@ export async function listOrders(opts: {
   ]);
   return { rows, total, sum: sum._sum.total ?? 0, page: opts.page, pageSize: opts.pageSize };
 }
+
+// ─────────────────────── POS terminal sync (shifts / refunds / expenses) ───────────────────────
+// Data uploaded by the desktop POS via /api/pos/{shifts,refunds,expenses}/sync.
+
+export async function getPosSyncOverview() {
+  const [shifts, refunds, expenses, lastShift, lastRefund, lastExpense] =
+    await Promise.all([
+      db.shift.count(),
+      db.refund.count(),
+      db.expense.count(),
+      db.shift.findFirst({ orderBy: { syncedAt: "desc" }, select: { syncedAt: true } }),
+      db.refund.findFirst({ orderBy: { syncedAt: "desc" }, select: { syncedAt: true } }),
+      db.expense.findFirst({ orderBy: { syncedAt: "desc" }, select: { syncedAt: true } }),
+    ]);
+  const lastSyncedAt =
+    [lastShift?.syncedAt, lastRefund?.syncedAt, lastExpense?.syncedAt]
+      .filter((d): d is Date => d instanceof Date)
+      .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+  return { shifts, refunds, expenses, lastSyncedAt };
+}
+
+export async function listRecentShifts(limit = 6) {
+  return db.shift.findMany({
+    orderBy: { closedAt: "desc" },
+    take: limit,
+    include: { restaurant: { select: { name: true } } },
+  });
+}
+
+export async function listRecentRefunds(limit = 6) {
+  return db.refund.findMany({
+    orderBy: { refundedAt: "desc" },
+    take: limit,
+    include: { restaurant: { select: { name: true } } },
+  });
+}
+
+export async function listRecentExpenses(limit = 6) {
+  return db.expense.findMany({
+    orderBy: { date: "desc" },
+    take: limit,
+    include: { restaurant: { select: { name: true } } },
+  });
+}
