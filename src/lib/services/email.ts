@@ -66,6 +66,48 @@ export async function sendPasswordResetEmail({
   });
 }
 
+export async function sendContactEmail({
+  name,
+  email,
+  message,
+}: {
+  name: string;
+  email: string;
+  message: string;
+}) {
+  const from = process.env.MAIL_FROM ?? process.env.SMTP_USER;
+  const recipient = process.env.SUPPORT_EMAIL ?? process.env.SMTP_USER;
+  if (!from)
+    throw new Error("MAIL_FROM or SMTP_USER must be configured to send email.");
+  if (!recipient)
+    throw new Error(
+      "SUPPORT_EMAIL or SMTP_USER must be configured to send contact email.",
+    );
+
+  const submittedAt = new Date().toLocaleString();
+  const transport = getTransport();
+
+  await transport.sendMail({
+    from,
+    to: recipient,
+    replyTo: email,
+    subject: `CafeFlow enquiry from ${name}`,
+    text: [
+      `Date: ${submittedAt}`,
+      `Name: ${name}`,
+      `Email: ${email}`,
+      "",
+      "Message:",
+      message,
+    ].join("\n"),
+    html: `<p><strong>Date:</strong> ${escapeHtml(submittedAt)}</p>
+      <p><strong>Name:</strong> ${escapeHtml(name)}</p>
+      <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+      <p><strong>Message:</strong></p>
+      <p>${escapeHtml(message).replace(/\n/g, "<br />")}</p>`,
+  });
+}
+
 function escapeHtml(value: string) {
   return value.replace(
     /[&<>'"]/g,

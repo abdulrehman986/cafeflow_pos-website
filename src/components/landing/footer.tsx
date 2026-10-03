@@ -9,26 +9,62 @@ export function LandingFooter() {
           <div className="lg:col-span-2">
             <BrandLogo />
             <p className="mt-4 text-sm text-muted-foreground max-w-sm leading-relaxed">
-              Offline-first POS and online management platform for restaurants, cafes and
-              food businesses. Run your restaurant offline, sync securely when online.
+              Offline-first POS and online management platform for restaurants,
+              cafes and food businesses. Run your restaurant offline, sync
+              securely when online.
             </p>
           </div>
           <div>
             <p className="text-sm font-semibold mb-3.5">Product</p>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
-              <li><a className="hover:text-foreground" href="#features">Features</a></li>
-              <li><a className="hover:text-foreground" href="#offline">Offline-first</a></li>
-              <li><a className="hover:text-foreground" href="#multi-restaurant">Multi-restaurant</a></li>
-              <li><a className="hover:text-foreground" href="#licensing">Licensing</a></li>
-              <li><a className="hover:text-foreground" href="#faq">FAQ</a></li>
+              <li>
+                <a className="hover:text-foreground" href="#features">
+                  Features
+                </a>
+              </li>
+              <li>
+                <a className="hover:text-foreground" href="#offline">
+                  Offline-first
+                </a>
+              </li>
+              <li>
+                <a className="hover:text-foreground" href="#multi-restaurant">
+                  Multi-restaurant
+                </a>
+              </li>
+              <li>
+                <a className="hover:text-foreground" href="#licensing">
+                  Licensing
+                </a>
+              </li>
+              <li>
+                <a className="hover:text-foreground" href="#faq">
+                  FAQ
+                </a>
+              </li>
             </ul>
           </div>
           <div>
             <p className="text-sm font-semibold mb-3.5">Company</p>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
-              <li><a className="hover:text-foreground" href="#contact">Contact</a></li>
-              <li><Link className="hover:text-foreground" href="/login">Client login</Link></li>
-              <li><a className="hover:text-foreground" href="mailto:support@cafeflow.app">support@cafeflow.app</a></li>
+              <li>
+                <a className="hover:text-foreground" href="#contact">
+                  Contact
+                </a>
+              </li>
+              <li>
+                <Link className="hover:text-foreground" href="/login">
+                  Client login
+                </Link>
+              </li>
+              <li>
+                <a
+                  className="hover:text-foreground"
+                  href="mailto:support@cafeflow.app"
+                >
+                  {process.env.SUPPORT_EMAIL || "cafeflow72@gmail.com"}
+                </a>
+              </li>
             </ul>
           </div>
         </div>
@@ -37,7 +73,7 @@ export function LandingFooter() {
             © {new Date().getFullYear()} CafeFlow. All rights reserved.
           </p>
           <p className="text-xs text-muted-foreground">
-            POS for Windows · Built with Tauri, React, Rust &amp; SQLite
+            POS for restaurants, cafes and food businesses.
           </p>
         </div>
       </div>

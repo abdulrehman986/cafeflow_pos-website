@@ -30,12 +30,19 @@ export function SectionHeading({
 }) {
   return (
     <div className={center ? "text-center max-w-2xl mx-auto" : "max-w-2xl"}>
-      <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5">
+      <Badge
+        variant="outline"
+        className="text-primary border-primary/30 bg-primary/5"
+      >
         {eyebrow}
       </Badge>
-      <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{title}</h2>
+      <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+        {title}
+      </h2>
       {description && (
-        <p className="mt-4 text-base text-muted-foreground leading-relaxed">{description}</p>
+        <p className="mt-4 text-base text-muted-foreground leading-relaxed">
+          {description}
+        </p>
       )}
     </div>
   );
@@ -101,7 +108,9 @@ export function FeaturesSection() {
                   <f.icon className="h-5 w-5" />
                 </div>
                 <h3 className="mt-4 font-semibold">{f.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  {f.desc}
+                </p>
               </CardContent>
             </Card>
           ))}
@@ -146,7 +155,9 @@ export function OfflineSection() {
 
           {/* Sync flow diagram */}
           <div className="rounded-2xl border bg-card p-6 shadow-sm">
-            <p className="text-sm font-semibold mb-5">How synchronization works</p>
+            <p className="text-sm font-semibold mb-5">
+              How synchronization works
+            </p>
             <ol className="space-y-4">
               {[
                 {
@@ -166,7 +177,7 @@ export function OfflineSection() {
                 },
                 {
                   icon: ShieldCheck,
-                  title: "Cloud database (PostgreSQL)",
+                  title: "Cloud database",
                   sub: "Deduped by restaurant + local ID, then dashboards update",
                 },
               ].map((step, i) => (
@@ -176,7 +187,10 @@ export function OfflineSection() {
                       <step.icon className="h-5 w-5" />
                     </div>
                     {i < 3 && (
-                      <span className="absolute left-1/2 -translate-x-1/2 top-full h-4 w-px bg-border" aria-hidden="true" />
+                      <span
+                        className="absolute left-1/2 -translate-x-1/2 top-full h-4 w-px bg-border"
+                        aria-hidden="true"
+                      />
                     )}
                   </div>
                   <div>
@@ -195,12 +209,33 @@ export function OfflineSection() {
 
 export function MultiRestaurantSection() {
   const restaurants = [
-    { name: "Lahore Restaurant", city: "Lahore", sales: "Rs. 85,000", orders: 412, license: "Active · 18 months left" },
-    { name: "Islamabad Restaurant", city: "Islamabad", sales: "Rs. 61,400", orders: 305, license: "Active · 24 months left" },
-    { name: "Karachi Restaurant", city: "Karachi", sales: "Rs. 91,200", orders: 508, license: "Expiring in 12 days" },
+    {
+      name: "Lahore Restaurant",
+      city: "Lahore",
+      sales: "Rs. 85,000",
+      orders: 412,
+      license: "Active · 18 months left",
+    },
+    {
+      name: "Islamabad Restaurant",
+      city: "Islamabad",
+      sales: "Rs. 61,400",
+      orders: 305,
+      license: "Active · 24 months left",
+    },
+    {
+      name: "Karachi Restaurant",
+      city: "Karachi",
+      sales: "Rs. 91,200",
+      orders: 508,
+      license: "Expiring in 12 days",
+    },
   ];
   return (
-    <section id="multi-restaurant" className="py-16 sm:py-20 bg-muted/30 border-y">
+    <section
+      id="multi-restaurant"
+      className="py-16 sm:py-20 bg-muted/30 border-y"
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="Multi-restaurant"
@@ -210,29 +245,60 @@ export function MultiRestaurantSection() {
         <div className="mt-12 max-w-3xl mx-auto">
           <div className="rounded-2xl border bg-card p-6 shadow-sm">
             <div className="flex items-center gap-3 pb-4 border-b">
-              <div className="h-11 w-11 rounded-xl bg-primary text-primary-foreground grid place-items-center font-bold">AR</div>
+              <div className="h-11 w-11 rounded-xl bg-primary text-primary-foreground grid place-items-center font-bold">
+                AR
+              </div>
               <div>
                 <p className="font-semibold">Ahmed Restaurants</p>
-                <p className="text-xs text-muted-foreground">Client account · 3 restaurants</p>
+                <p className="text-xs text-muted-foreground">
+                  Client account · 3 restaurants
+                </p>
               </div>
-              <Badge className="ml-auto" variant="outline">Client dashboard</Badge>
+              <Badge className="ml-auto" variant="outline">
+                Client dashboard
+              </Badge>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {restaurants.map((r) => (
-                <div key={r.name} className="rounded-xl border bg-background p-4">
+                <div
+                  key={r.name}
+                  className="rounded-xl border bg-background p-4"
+                >
                   <p className="text-sm font-semibold truncate">{r.name}</p>
                   <p className="text-xs text-muted-foreground">{r.city}</p>
                   <div className="mt-3 space-y-1.5 text-xs">
-                    <p className="flex justify-between"><span className="text-muted-foreground">Today</span><span className="font-semibold tabular-nums">{r.sales}</span></p>
-                    <p className="flex justify-between"><span className="text-muted-foreground">Orders</span><span className="font-semibold tabular-nums">{r.orders}</span></p>
-                    <p className="flex justify-between"><span className="text-muted-foreground">License</span><span className={r.license.includes("Expiring") ? "text-amber-600 dark:text-amber-400 font-medium" : "text-emerald-600 dark:text-emerald-400 font-medium"}>{r.license}</span></p>
+                    <p className="flex justify-between">
+                      <span className="text-muted-foreground">Today</span>
+                      <span className="font-semibold tabular-nums">
+                        {r.sales}
+                      </span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="text-muted-foreground">Orders</span>
+                      <span className="font-semibold tabular-nums">
+                        {r.orders}
+                      </span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="text-muted-foreground">License</span>
+                      <span
+                        className={
+                          r.license.includes("Expiring")
+                            ? "text-amber-600 dark:text-amber-400 font-medium"
+                            : "text-emerald-600 dark:text-emerald-400 font-medium"
+                        }
+                      >
+                        {r.license}
+                      </span>
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
             <p className="mt-4 text-xs text-muted-foreground text-center">
-              Data isolation is enforced server-side — restaurant data is only ever queried through
-              ownership checks backed by database-level policies.
+              Data isolation is enforced server-side — restaurant data is only
+              ever queried through ownership checks backed by database-level
+              policies.
             </p>
           </div>
         </div>
@@ -274,12 +340,18 @@ export function LicensingSection() {
             <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
               <div className="border-b bg-muted/50 px-5 py-3 flex items-center justify-between">
                 <p className="text-sm font-semibold">License details</p>
-                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-0">Active</Badge>
+                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-0">
+                  Active
+                </Badge>
               </div>
               <div className="p-5 space-y-4">
                 <div className="rounded-xl border bg-background p-4 text-center">
-                  <p className="text-xs text-muted-foreground mb-1.5">License key</p>
-                  <code className="text-lg font-bold tracking-widest">CF-7K2M-9QF4-XR8T</code>
+                  <p className="text-xs text-muted-foreground mb-1.5">
+                    License key
+                  </p>
+                  <code className="text-lg font-bold tracking-widest">
+                    CF-7K2M-9QF4-XR8T
+                  </code>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {[
@@ -297,8 +369,8 @@ export function LicensingSection() {
                 <div className="rounded-lg border border-dashed px-3.5 py-3 flex items-center gap-2.5">
                   <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
                   <p className="text-xs text-muted-foreground">
-                    The server is the source of truth — the POS caches license state locally and verifies
-                    periodically when online.
+                    The server is the source of truth — the POS caches license
+                    state locally and verifies periodically when online.
                   </p>
                 </div>
               </div>
@@ -312,12 +384,36 @@ export function LicensingSection() {
 
 export function SecuritySection() {
   const items = [
-    { icon: Lock, title: "Encrypted transport", desc: "All traffic — web and POS — over HTTPS with signed device tokens." },
-    { icon: ShieldCheck, title: "Row-level security", desc: "Database policies enforce that clients only ever touch their own restaurants' data." },
-    { icon: Server, title: "No secrets in clients", desc: "Service keys and secrets never leave the server; the POS holds only its device token." },
-    { icon: RefreshCcw, title: "Idempotent writes", desc: "Unique constraints on (restaurant, local ID) make duplicate syncs impossible." },
-    { icon: Database, title: "Validated input", desc: "Every API payload is schema-validated server-side before it reaches the database." },
-    { icon: MonitorSmartphone, title: "Rate limiting", desc: "Login, sync and activation endpoints are throttled against abuse." },
+    {
+      icon: Lock,
+      title: "Encrypted transport",
+      desc: "All traffic — web and POS — over HTTPS with signed device tokens.",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Row-level security",
+      desc: "Database policies enforce that clients only ever touch their own restaurants' data.",
+    },
+    {
+      icon: Server,
+      title: "No secrets in clients",
+      desc: "Service keys and secrets never leave the server; the POS holds only its device token.",
+    },
+    {
+      icon: RefreshCcw,
+      title: "Idempotent writes",
+      desc: "Unique constraints on (restaurant, local ID) make duplicate syncs impossible.",
+    },
+    {
+      icon: Database,
+      title: "Validated input",
+      desc: "Every API payload is schema-validated server-side before it reaches the database.",
+    },
+    {
+      icon: MonitorSmartphone,
+      title: "Rate limiting",
+      desc: "Login, sync and activation endpoints are throttled against abuse.",
+    },
   ];
   return (
     <section id="security" className="py-16 sm:py-20 bg-muted/30 border-y">
@@ -332,7 +428,9 @@ export function SecuritySection() {
             <div key={i.title} className="rounded-xl border bg-card p-5">
               <i.icon className="h-5 w-5 text-primary" />
               <h3 className="mt-3 font-semibold">{i.title}</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{i.desc}</p>
+              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                {i.desc}
+              </p>
             </div>
           ))}
         </div>
