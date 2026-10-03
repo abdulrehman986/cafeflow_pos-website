@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getCurrentLicense } from "./licenses";
 import { sha256 } from "@/lib/auth/password";
@@ -240,7 +241,18 @@ export async function authenticatePosDevice(bearerToken: string): Promise<PosCon
 
 export interface SyncOutcome {
   localId: string;
-  action: "CREATED" | "SKIPPED_DUPLICATE";
+  /** FAILED = not stored — the POS keeps the record queued and retries.
+   * Only CREATED / SKIPPED_DUPLICATE mean "safely stored". */
+  action: "CREATED" | "SKIPPED_DUPLICATE" | "FAILED";
+}
+
+/** True when a create failed only because the record already exists
+ * (idempotency race) — safe to report as a duplicate. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
 }
 
 export async function syncSales(
@@ -292,14 +304,19 @@ export async function syncSales(
       });
       outcomes.push({ localId: sale.localSaleId, action: "CREATED" });
       created++;
-    } catch {
-      outcomes.push({ localId: sale.localSaleId, action: "SKIPPED_DUPLICATE" });
-      skipped++;
-      failed++;
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        outcomes.push({ localId: sale.localSaleId, action: "SKIPPED_DUPLICATE" });
+        skipped++;
+      } else {
+        // Transient/unknown DB failure — the POS must keep this record.
+        outcomes.push({ localId: sale.localSaleId, action: "FAILED" });
+        failed++;
+      }
     }
   }
 
-  const status = created === 0 && skipped > 0 ? "SUCCESS" : failed > 0 ? "PARTIAL" : "SUCCESS";
+  const status = failed > 0 ? "PARTIAL" : "SUCCESS";
   await db.syncLog.create({
     data: {
       restaurantId: ctx.restaurant.id,
@@ -384,10 +401,15 @@ export async function syncOrders(
       });
       outcomes.push({ localId: order.localOrderId, action: "CREATED" });
       created++;
-    } catch {
-      outcomes.push({ localId: order.localOrderId, action: "SKIPPED_DUPLICATE" });
-      skipped++;
-      failed++;
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        outcomes.push({ localId: order.localOrderId, action: "SKIPPED_DUPLICATE" });
+        skipped++;
+      } else {
+        // Transient/unknown DB failure — the POS must keep this record.
+        outcomes.push({ localId: order.localOrderId, action: "FAILED" });
+        failed++;
+      }
     }
   }
 
@@ -403,6 +425,244 @@ export async function syncOrders(
       recordsFailed: failed,
       status,
       message: `Synced ${created} new / ${skipped} duplicate orders for ${ctx.restaurant.name}`,
+    },
+  });
+
+  return { outcomes, created, skipped, failed, status };
+}
+
+// ─────────────────────── Shift / Refund / Expense sync ───────────────────────
+
+export async function syncShifts(
+  ctx: PosContext,
+  shifts: Array<{
+    localShiftId: string;
+    shiftNumber?: number;
+    openedAt: string;
+    closedAt: string;
+    cashierName?: string;
+    openingCash?: number;
+    closingCash?: number;
+    expectedCash?: number;
+    cashDifference?: number;
+    orderCount?: number;
+    grossSales?: number;
+    refundsTotal?: number;
+    expensesTotal?: number;
+    netSales?: number;
+  }>
+) {
+  const outcomes: SyncOutcome[] = [];
+  let created = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const shift of shifts) {
+    try {
+      const existing = await db.shift.findUnique({
+        where: { restaurantId_localShiftId: { restaurantId: ctx.restaurant.id, localShiftId: shift.localShiftId } },
+        select: { id: true },
+      });
+      if (existing) {
+        outcomes.push({ localId: shift.localShiftId, action: "SKIPPED_DUPLICATE" });
+        skipped++;
+        continue;
+      }
+      await db.shift.create({
+        data: {
+          restaurantId: ctx.restaurant.id,
+          localShiftId: shift.localShiftId,
+          shiftNumber: shift.shiftNumber,
+          openedAt: new Date(shift.openedAt),
+          closedAt: new Date(shift.closedAt),
+          cashierName: shift.cashierName,
+          openingCash: shift.openingCash,
+          closingCash: shift.closingCash,
+          expectedCash: shift.expectedCash,
+          cashDifference: shift.cashDifference,
+          orderCount: shift.orderCount,
+          grossSales: shift.grossSales,
+          refundsTotal: shift.refundsTotal,
+          expensesTotal: shift.expensesTotal,
+          netSales: shift.netSales,
+          syncedAt: new Date(),
+        },
+      });
+      outcomes.push({ localId: shift.localShiftId, action: "CREATED" });
+      created++;
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        outcomes.push({ localId: shift.localShiftId, action: "SKIPPED_DUPLICATE" });
+        skipped++;
+      } else {
+        outcomes.push({ localId: shift.localShiftId, action: "FAILED" });
+        failed++;
+      }
+    }
+  }
+
+  const status = failed > 0 ? "PARTIAL" : "SUCCESS";
+  await db.syncLog.create({
+    data: {
+      restaurantId: ctx.restaurant.id,
+      deviceId: ctx.device.id,
+      recordType: "SHIFTS",
+      recordsReceived: shifts.length,
+      recordsCreated: created,
+      recordsSkipped: skipped,
+      recordsFailed: failed,
+      status,
+      message: `Synced ${created} new / ${skipped} duplicate shifts for ${ctx.restaurant.name}`,
+    },
+  });
+
+  return { outcomes, created, skipped, failed, status };
+}
+
+export async function syncRefunds(
+  ctx: PosContext,
+  refunds: Array<{
+    localRefundId: string;
+    localOrderId?: string;
+    localSaleId?: string;
+    orderNumber?: string;
+    amount: number;
+    reason?: string;
+    refundedAt: string;
+    cashierName?: string;
+    supervisorName?: string;
+    shiftLocalId?: string;
+  }>
+) {
+  const outcomes: SyncOutcome[] = [];
+  let created = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const refund of refunds) {
+    try {
+      const existing = await db.refund.findUnique({
+        where: { restaurantId_localRefundId: { restaurantId: ctx.restaurant.id, localRefundId: refund.localRefundId } },
+        select: { id: true },
+      });
+      if (existing) {
+        outcomes.push({ localId: refund.localRefundId, action: "SKIPPED_DUPLICATE" });
+        skipped++;
+        continue;
+      }
+      await db.refund.create({
+        data: {
+          restaurantId: ctx.restaurant.id,
+          localRefundId: refund.localRefundId,
+          localOrderId: refund.localOrderId,
+          localSaleId: refund.localSaleId,
+          orderNumber: refund.orderNumber,
+          amount: refund.amount,
+          reason: refund.reason,
+          refundedAt: new Date(refund.refundedAt),
+          cashierName: refund.cashierName,
+          supervisorName: refund.supervisorName,
+          shiftLocalId: refund.shiftLocalId,
+          syncedAt: new Date(),
+        },
+      });
+      outcomes.push({ localId: refund.localRefundId, action: "CREATED" });
+      created++;
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        outcomes.push({ localId: refund.localRefundId, action: "SKIPPED_DUPLICATE" });
+        skipped++;
+      } else {
+        outcomes.push({ localId: refund.localRefundId, action: "FAILED" });
+        failed++;
+      }
+    }
+  }
+
+  const status = failed > 0 ? "PARTIAL" : "SUCCESS";
+  await db.syncLog.create({
+    data: {
+      restaurantId: ctx.restaurant.id,
+      deviceId: ctx.device.id,
+      recordType: "REFUNDS",
+      recordsReceived: refunds.length,
+      recordsCreated: created,
+      recordsSkipped: skipped,
+      recordsFailed: failed,
+      status,
+      message: `Synced ${created} new / ${skipped} duplicate refunds for ${ctx.restaurant.name}`,
+    },
+  });
+
+  return { outcomes, created, skipped, failed, status };
+}
+
+export async function syncExpenses(
+  ctx: PosContext,
+  expenses: Array<{
+    localExpenseId: string;
+    date: string;
+    category?: string;
+    description?: string;
+    amount: number;
+    cashierName?: string;
+    shiftLocalId?: string;
+  }>
+) {
+  const outcomes: SyncOutcome[] = [];
+  let created = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const expense of expenses) {
+    try {
+      const existing = await db.expense.findUnique({
+        where: { restaurantId_localExpenseId: { restaurantId: ctx.restaurant.id, localExpenseId: expense.localExpenseId } },
+        select: { id: true },
+      });
+      if (existing) {
+        outcomes.push({ localId: expense.localExpenseId, action: "SKIPPED_DUPLICATE" });
+        skipped++;
+        continue;
+      }
+      await db.expense.create({
+        data: {
+          restaurantId: ctx.restaurant.id,
+          localExpenseId: expense.localExpenseId,
+          date: new Date(expense.date),
+          category: expense.category,
+          description: expense.description,
+          amount: expense.amount,
+          cashierName: expense.cashierName,
+          shiftLocalId: expense.shiftLocalId,
+          syncedAt: new Date(),
+        },
+      });
+      outcomes.push({ localId: expense.localExpenseId, action: "CREATED" });
+      created++;
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        outcomes.push({ localId: expense.localExpenseId, action: "SKIPPED_DUPLICATE" });
+        skipped++;
+      } else {
+        outcomes.push({ localId: expense.localExpenseId, action: "FAILED" });
+        failed++;
+      }
+    }
+  }
+
+  const status = failed > 0 ? "PARTIAL" : "SUCCESS";
+  await db.syncLog.create({
+    data: {
+      restaurantId: ctx.restaurant.id,
+      deviceId: ctx.device.id,
+      recordType: "EXPENSES",
+      recordsReceived: expenses.length,
+      recordsCreated: created,
+      recordsSkipped: skipped,
+      recordsFailed: failed,
+      status,
+      message: `Synced ${created} new / ${skipped} duplicate expenses for ${ctx.restaurant.name}`,
     },
   });
 
