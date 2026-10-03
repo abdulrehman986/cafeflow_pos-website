@@ -212,6 +212,76 @@ export const posOrdersSyncSchema = z.object({
   batchId: z.string().max(64).optional(),
 });
 
+export const posShiftRecordSchema = z.object({
+  localShiftId: z.string().min(1, "localShiftId is required").max(64),
+  shiftNumber: z.coerce.number().int().min(0).optional(),
+  openedAt: z
+    .string()
+    .datetime({ offset: true }, { message: "openedAt must be ISO 8601" }),
+  closedAt: z
+    .string()
+    .datetime({ offset: true }, { message: "closedAt must be ISO 8601" }),
+  cashierName: z.string().max(80).optional(),
+  openingCash: z.coerce.number().min(0).optional(),
+  closingCash: z.coerce.number().min(0).optional(),
+  expectedCash: z.coerce.number().optional(),
+  cashDifference: z.coerce.number().optional(),
+  orderCount: z.coerce.number().int().min(0).optional(),
+  grossSales: z.coerce.number().min(0).optional(),
+  refundsTotal: z.coerce.number().min(0).optional(),
+  expensesTotal: z.coerce.number().min(0).optional(),
+  netSales: z.coerce.number().optional(),
+});
+
+export const posShiftsSyncSchema = z.object({
+  shifts: z.array(posShiftRecordSchema).min(1, "No shifts provided").max(500),
+  batchId: z.string().max(64).optional(),
+});
+
+export const posRefundRecordSchema = z.object({
+  localRefundId: z.string().min(1, "localRefundId is required").max(64),
+  // Composite local ids of the affected sale/order on the POS device
+  localOrderId: z.string().max(64).optional(),
+  localSaleId: z.string().max(64).optional(),
+  orderNumber: z.string().max(40).optional(),
+  amount: z.coerce.number().min(0),
+  reason: z.string().max(500).optional(),
+  refundedAt: z
+    .string()
+    .datetime({ offset: true }, { message: "refundedAt must be ISO 8601" }),
+  cashierName: z.string().max(80).optional(),
+  supervisorName: z.string().max(80).optional(),
+  shiftLocalId: z.string().max(64).optional(),
+});
+
+export const posRefundsSyncSchema = z.object({
+  refunds: z
+    .array(posRefundRecordSchema)
+    .min(1, "No refunds provided")
+    .max(500),
+  batchId: z.string().max(64).optional(),
+});
+
+export const posExpenseRecordSchema = z.object({
+  localExpenseId: z.string().min(1, "localExpenseId is required").max(64),
+  date: z
+    .string()
+    .datetime({ offset: true }, { message: "date must be ISO 8601" }),
+  category: z.string().max(60).optional(),
+  description: z.string().max(200).optional(),
+  amount: z.coerce.number().min(0),
+  cashierName: z.string().max(80).optional(),
+  shiftLocalId: z.string().max(64).optional(),
+});
+
+export const posExpensesSyncSchema = z.object({
+  expenses: z
+    .array(posExpenseRecordSchema)
+    .min(1, "No expenses provided")
+    .max(500),
+  batchId: z.string().max(64).optional(),
+});
+
 // ─────────────────────────── Shared query schemas ───────────────────────────
 
 export const paginationSchema = z.object({

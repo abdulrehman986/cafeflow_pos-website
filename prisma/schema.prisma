@@ -98,6 +98,9 @@ model Restaurant {
   devices  Device[]
   sales    Sale[]
   orders   Order[]
+  shifts   Shift[]
+  refunds  Refund[]
+  expenses Expense[]
   syncLogs SyncLog[]
 
   @@index([clientId])
@@ -241,6 +244,91 @@ model OrderItem {
   @@map("order_items")
 }
 
+// ─────────────────────────────── SHIFTS (POS SYNC) ───────────────────────────────
+// Closed-shift cash reconciliation uploaded by the POS.
+// (restaurant_id, local_shift_id) is UNIQUE → idempotent sync.
+
+model Shift {
+  id             String     @id @default(uuid())
+  restaurantId   String
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  localShiftId   String
+  shiftNumber    Int?
+  openedAt       DateTime
+  closedAt       DateTime
+  cashierName    String?
+  openingCash    Float?
+  closingCash    Float?
+  expectedCash   Float?
+  cashDifference Float?
+  orderCount     Int?
+  grossSales     Float?
+  refundsTotal   Float?
+  expensesTotal  Float?
+  netSales       Float?
+  syncedAt       DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+
+  @@unique([restaurantId, localShiftId])
+  @@index([restaurantId, openedAt])
+  @@index([openedAt])
+  @@map("shifts")
+}
+
+// ─────────────────────────────── REFUNDS (POS SYNC) ───────────────────────────────
+// Refunds issued on the POS. Orders are immutable once synced (the sync
+// endpoints skip duplicates), so refunded amounts live here and the website
+// derives net sales as orders − refunds.
+// (restaurant_id, local_refund_id) is UNIQUE → idempotent sync.
+
+model Refund {
+  id             String     @id @default(uuid())
+  restaurantId   String
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  localRefundId  String
+  // Composite local ids of the affected sale/order on the POS device
+  localOrderId   String?
+  localSaleId    String?
+  orderNumber    String?
+  amount         Float
+  reason         String?
+  refundedAt     DateTime
+  cashierName    String?
+  supervisorName String?
+  shiftLocalId   String?
+  syncedAt       DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+
+  @@unique([restaurantId, localRefundId])
+  @@index([restaurantId, refundedAt])
+  @@index([refundedAt])
+  @@map("refunds")
+}
+
+// ─────────────────────────────── EXPENSES (POS SYNC) ───────────────────────────────
+// Cash expenses recorded on the POS; they reduce expected cash per shift.
+// (restaurant_id, local_expense_id) is UNIQUE → idempotent sync.
+
+model Expense {
+  id             String     @id @default(uuid())
+  restaurantId   String
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  localExpenseId String
+  date           DateTime
+  category       String?
+  description    String?
+  amount         Float
+  cashierName    String?
+  shiftLocalId   String?
+  syncedAt       DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+
+  @@unique([restaurantId, localExpenseId])
+  @@index([restaurantId, date])
+  @@index([date])
+  @@map("expenses")
+}
+
 // ─────────────────────────────── SYNC LOGS ───────────────────────────────
 
 model SyncLog {
@@ -248,7 +336,7 @@ model SyncLog {
   restaurantId    String
   restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   deviceId        String?
-  // SALES | ORDERS
+  // SALES | ORDERS | SHIFTS | REFUNDS | EXPENSES
   recordType      String
   recordsReceived Int      @default(0)
   recordsCreated  Int      @default(0)
