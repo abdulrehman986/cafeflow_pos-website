@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { cache } from "react";
 import {
   SESSION_COOKIE,
   SESSION_MAX_AGE_SECONDS,
@@ -48,8 +49,16 @@ export async function destroySession() {
 /**
  * Reads and verifies the session cookie, then re-checks the user against the
  * database (revocation-safe: suspended accounts lose access immediately).
+ *
+ * Memoized per request via React cache(): the guard runs in the layout AND the
+ * page of a route — this makes both share one JWT verification and one DB
+ * query instead of duplicating them.
  */
-export async function getSessionUser(): Promise<SessionUser | null> {
+export const getSessionUser = cache((): Promise<SessionUser | null> =>
+  _getSessionUserImpl()
+);
+
+async function _getSessionUserImpl(): Promise<SessionUser | null> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;

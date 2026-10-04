@@ -1,6 +1,8 @@
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { refreshExpiredLicenses, licenseBucket } from "./licenses";
 import { startOfDayUTC, addDays } from "@/lib/format";
+import { LICENSE_EXPIRING_SOON_DAYS } from "@/lib/constants";
 
 // ─────────────────────── Admin dashboard ───────────────────────
 
@@ -17,7 +19,7 @@ export async function getAdminOverview() {
     suspendedClients,
     totalRestaurants,
     activeRestaurants,
-    licenses,
+    licenseBuckets,
     todaySalesAgg,
     monthSalesAgg,
   ] = await Promise.all([
@@ -26,10 +28,26 @@ export async function getAdminOverview() {
     db.client.count({ where: { status: "SUSPENDED" } }),
     db.restaurant.count(),
     db.restaurant.count({ where: { status: "ACTIVE" } }),
-    db.license.findMany({
-      where: { status: { not: "REVOKED" } },
-      select: { status: true, expiresAt: true },
-    }),
+    // Bucket counts computed in SQL instead of loading every license row
+    // (ACTIVE licenses past expiry were already flipped by refreshExpiredLicenses).
+    // UTC_TIMESTAMP() matches how Prisma stores DateTime (UTC) on MySQL/TiDB.
+    db.$queryRaw<{
+      total: bigint;
+      active: bigint;
+      expiring_soon: bigint;
+      expired: bigint;
+      suspended: bigint;
+      pending: bigint;
+    }[]>`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END) AS active,
+        SUM(CASE WHEN status = 'ACTIVE' AND expiresAt < UTC_TIMESTAMP() + INTERVAL ${LICENSE_EXPIRING_SOON_DAYS} DAY THEN 1 ELSE 0 END) AS expiring_soon,
+        SUM(CASE WHEN status = 'EXPIRED' OR (status = 'ACTIVE' AND expiresAt < UTC_TIMESTAMP()) THEN 1 ELSE 0 END) AS expired,
+        SUM(CASE WHEN status = 'SUSPENDED' THEN 1 ELSE 0 END) AS suspended,
+        SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) AS pending
+      FROM licenses
+      WHERE status <> 'REVOKED'`,
     db.sale.aggregate({
       where: { status: "COMPLETED", saleDate: { gte: todayStart } },
       _sum: { total: true },
@@ -42,11 +60,14 @@ export async function getAdminOverview() {
     }),
   ]);
 
-  const buckets = { ACTIVE: 0, EXPIRING_SOON: 0, EXPIRED: 0, SUSPENDED: 0, PENDING: 0 };
-  for (const l of licenses) {
-    const bucket = licenseBucket(l.status, l.expiresAt);
-    if (bucket in buckets) buckets[bucket as keyof typeof buckets]++;
-  }
+  const b = licenseBuckets[0];
+  const buckets = {
+    ACTIVE: Number(b?.active ?? 0),
+    EXPIRING_SOON: Number(b?.expiring_soon ?? 0),
+    EXPIRED: Number(b?.expired ?? 0),
+    SUSPENDED: Number(b?.suspended ?? 0),
+    PENDING: Number(b?.pending ?? 0),
+  };
 
   return {
     clients: { total: totalClients, active: activeClients, suspended: suspendedClients },
@@ -57,7 +78,7 @@ export async function getAdminOverview() {
       expired: buckets.EXPIRED,
       suspended: buckets.SUSPENDED,
       pending: buckets.PENDING,
-      total: licenses.length,
+      total: Number(b?.total ?? 0),
     },
     sales: {
       today: todaySalesAgg._sum.total ?? 0,
@@ -68,23 +89,20 @@ export async function getAdminOverview() {
   };
 }
 
-/** 14-day platform revenue trend for the admin chart. */
+/** 14-day platform revenue trend for the admin chart.
+ *  Aggregated in SQL (one row per day) — never ships raw sale rows to Node. */
 export async function getAdminSalesTrend(days = 14) {
   const start = addDays(startOfDayUTC(new Date()), -(days - 1));
-  const sales = await db.sale.findMany({
-    where: { status: "COMPLETED", saleDate: { gte: start } },
-    select: { saleDate: true, total: true, restaurantId: true },
+  const rows = await db.$queryRaw<{ day: string; total: number }[]>`
+    SELECT DATE_FORMAT(saleDate, '%Y-%m-%d') AS day, SUM(total) AS total
+    FROM sales
+    WHERE status = 'COMPLETED' AND saleDate >= ${start}
+    GROUP BY day`;
+  const totals = new Map(rows.map((r) => [r.day, Number(r.total)]));
+  return Array.from({ length: days }, (_, i) => {
+    const key = addDays(start, i).toISOString().slice(0, 10);
+    return { date: key, total: totals.get(key) ?? 0 };
   });
-  const byDay = new Map<string, number>();
-  for (let i = 0; i < days; i++) {
-    const d = addDays(start, i);
-    byDay.set(d.toISOString().slice(0, 10), 0);
-  }
-  for (const s of sales) {
-    const key = s.saleDate.toISOString().slice(0, 10);
-    if (byDay.has(key)) byDay.set(key, (byDay.get(key) ?? 0) + s.total);
-  }
-  return Array.from(byDay.entries()).map(([date, total]) => ({ date, total }));
 }
 
 /** Revenue split by payment method (admin overview donut). */
@@ -129,6 +147,23 @@ export async function getTopRestaurants(limit = 6) {
     }))
     .sort((a, b) => b.total - a.total)
     .slice(0, limit);
+}
+
+/** Top clients by revenue over the trailing `days` (reports ranking).
+ *  One SQL aggregation — replaces loading every 30-day sale row into Node. */
+export async function getTopClientsByRevenue(days = 30, limit = 10) {
+  const since = new Date(Date.now() - days * 86400000);
+  const rows = await db.$queryRaw<{ id: string; companyName: string; revenue: number }[]>`
+    SELECT c.id, c.companyName, SUM(s.total) AS revenue
+    FROM clients c
+    JOIN restaurants r ON r.clientId = c.id
+    JOIN sales s ON s.restaurantId = r.id
+      AND s.status = 'COMPLETED' AND s.saleDate >= ${since}
+    GROUP BY c.id, c.companyName
+    HAVING SUM(s.total) > 0
+    ORDER BY revenue DESC
+    LIMIT ${limit}`;
+  return rows.map((r) => ({ id: r.id, name: r.companyName, revenue: Number(r.revenue) }));
 }
 
 // ─────────────────────── Client dashboard ───────────────────────
@@ -239,31 +274,24 @@ export async function getClientOverview(clientId: string) {
   };
 }
 
-/** Daily sales series for one restaurant (or a client's whole estate). */
+/** Daily sales series for one restaurant (or a client's whole estate).
+ *  Aggregated in SQL (one row per day) — never ships raw sale rows to Node. */
 export async function getSalesSeries(opts: {
   restaurantIds: string[];
   from: Date;
   to: Date;
 }) {
-  const sales = await db.sale.findMany({
-    where: {
-      restaurantId: { in: opts.restaurantIds },
-      status: "COMPLETED",
-      saleDate: { gte: opts.from, lte: opts.to },
-    },
-    select: { saleDate: true, total: true },
-  });
-  const byDay = new Map<string, { total: number; count: number }>();
-  for (const s of sales) {
-    const key = s.saleDate.toISOString().slice(0, 10);
-    const cur = byDay.get(key) ?? { total: 0, count: 0 };
-    cur.total += s.total;
-    cur.count += 1;
-    byDay.set(key, cur);
-  }
-  return Array.from(byDay.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, v]) => ({ date, total: v.total, orders: v.count }));
+  if (opts.restaurantIds.length === 0) return [];
+  const rows = await db.$queryRaw<{ day: string; total: number; orders: bigint | number }[]>`
+    SELECT DATE_FORMAT(saleDate, '%Y-%m-%d') AS day, SUM(total) AS total, COUNT(*) AS orders
+    FROM sales
+    WHERE status = 'COMPLETED'
+      AND saleDate >= ${opts.from} AND saleDate <= ${opts.to}
+      AND restaurantId IN (${Prisma.join(opts.restaurantIds)})
+    GROUP BY day`;
+  return rows
+    .map((r) => ({ date: r.day, total: Number(r.total), orders: Number(r.orders) }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** Payment-method split for a set of restaurants. */
@@ -286,9 +314,11 @@ export async function getPaymentSplit(opts: { restaurantIds: string[]; from?: Da
     .sort((a, b) => b.total - a.total);
 }
 
-/** Paginated sales list with filters. restaurantIds scopes the query (security boundary). */
+/** Paginated sales list with filters.
+ *  `restaurantIds` scopes the query (security boundary for client users);
+ *  omit it for platform-wide listings (admin) — no giant IN(...) clause. */
 export async function listSales(opts: {
-  restaurantIds: string[];
+  restaurantIds?: string[];
   page: number;
   pageSize: number;
   from?: Date;
@@ -297,7 +327,7 @@ export async function listSales(opts: {
   search?: string;
 }) {
   const where = {
-    restaurantId: { in: opts.restaurantIds },
+    ...(opts.restaurantIds?.length ? { restaurantId: { in: opts.restaurantIds } } : {}),
     ...(opts.from || opts.to
       ? { saleDate: { ...(opts.from ? { gte: opts.from } : {}), ...(opts.to ? { lte: opts.to } : {}) } }
       : {}),
@@ -325,9 +355,9 @@ export async function listSales(opts: {
   return { rows, total, sum: sum._sum.total ?? 0, page: opts.page, pageSize: opts.pageSize };
 }
 
-/** Paginated orders list with filters. */
+/** Paginated orders list with filters. Same scoping rules as listSales. */
 export async function listOrders(opts: {
-  restaurantIds: string[];
+  restaurantIds?: string[];
   page: number;
   pageSize: number;
   from?: Date;
@@ -336,7 +366,7 @@ export async function listOrders(opts: {
   search?: string;
 }) {
   const where = {
-    restaurantId: { in: opts.restaurantIds },
+    ...(opts.restaurantIds?.length ? { restaurantId: { in: opts.restaurantIds } } : {}),
     ...(opts.from || opts.to
       ? { orderDate: { ...(opts.from ? { gte: opts.from } : {}), ...(opts.to ? { lte: opts.to } : {}) } }
       : {}),

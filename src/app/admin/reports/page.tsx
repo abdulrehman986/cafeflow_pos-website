@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/shared/table-kit";
 import { SalesTrendChart, PaymentMethodChart } from "@/components/dashboard/charts";
 import { StatCard } from "@/components/shared/stat-card";
 import { refreshExpiredLicenses } from "@/lib/services/licenses";
-import { getAdminSalesTrend, getAdminPaymentSplit, getTopRestaurants } from "@/lib/services/dashboard";
+import { getAdminSalesTrend, getAdminPaymentSplit, getTopRestaurants, getTopClientsByRevenue } from "@/lib/services/dashboard";
 import { db } from "@/lib/db";
 import { formatRs, formatNumber } from "@/lib/format";
 import { Banknote, Receipt, Users, Store } from "lucide-react";
@@ -15,35 +15,13 @@ export const dynamic = "force-dynamic";
 export default async function AdminReportsPage() {
   await refreshExpiredLicenses();
 
-  const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const d30 = new Date(now.getTime() - 30 * 86400000);
-
-  const [trend, paymentSplit, topRestaurants, clientsRanking, totals] = await Promise.all([
+  const [trend, paymentSplit, topRestaurants, clientRows, totals] = await Promise.all([
     getAdminSalesTrend(30),
     getAdminPaymentSplit(),
     getTopRestaurants(10),
-    db.client.findMany({
-      select: {
-        id: true,
-        companyName: true,
-        restaurants: {
-          select: { sales: { where: { status: "COMPLETED", saleDate: { gte: d30 } }, select: { total: true } } },
-        },
-      },
-    }),
+    getTopClientsByRevenue(30, 10),
     db.sale.aggregate({ where: { status: "COMPLETED" }, _sum: { total: true }, _count: true }),
   ]);
-
-  const clientRows = clientsRanking
-    .map((c) => ({
-      id: c.id,
-      name: c.companyName,
-      revenue30: c.restaurants.reduce((a, r) => a + r.sales.reduce((x, s) => x + s.total, 0), 0),
-    }))
-    .filter((c) => c.revenue30 > 0)
-    .sort((a, b) => b.revenue30 - a.revenue30)
-    .slice(0, 10);
 
   return (
     <>
@@ -136,8 +114,8 @@ export default async function AdminReportsPage() {
               </TableHeader>
               <TableBody>
                 {clientRows.map((c, i) => {
-                  const max = clientRows[0]?.revenue30 || 1;
-                  const share = Math.round((c.revenue30 / max) * 100);
+                  const max = clientRows[0]?.revenue || 1;
+                  const share = Math.round((c.revenue / max) * 100);
                   return (
                     <TableRow key={c.id}>
                       <TableCell className="text-sm text-muted-foreground tabular-nums">{i + 1}</TableCell>
@@ -146,7 +124,7 @@ export default async function AdminReportsPage() {
                           {c.name}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-right text-sm font-semibold tabular-nums">{formatRs(c.revenue30)}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold tabular-nums">{formatRs(c.revenue)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 justify-end">
                           <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">

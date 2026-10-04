@@ -16,7 +16,6 @@ import { FilterToolbar, UrlPagination } from "@/components/shared/filter-toolbar
 import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-filter";
 import { listOrders } from "@/lib/services/dashboard";
 import { formatRs, formatNumber, fmtDate, fmtTime } from "@/lib/format";
-import { db } from "@/lib/db";
 import { Receipt, Banknote, Coins, CalendarRange, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -31,9 +30,9 @@ export default async function AdminOrdersPage({
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
-  const restaurantIds = sp.restaurantId
-    ? [sp.restaurantId]
-    : (await db.restaurant.findMany({ select: { id: true } })).map((r) => r.id);
+  // Omit the scope for platform-wide listings — only filter when a restaurant
+  // is explicitly selected in the URL.
+  const restaurantIds = sp.restaurantId ? [sp.restaurantId] : undefined;
 
   const from = sp.from ? new Date(sp.from + "T00:00:00Z") : undefined;
   const to = sp.to ? new Date(sp.to + "T23:59:59Z") : undefined;

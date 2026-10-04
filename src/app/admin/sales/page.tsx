@@ -16,7 +16,6 @@ import { FilterToolbar, UrlPagination } from "@/components/shared/filter-toolbar
 import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-filter";
 import { listSales } from "@/lib/services/dashboard";
 import { formatRs, formatNumber, fmtDate, fmtTime } from "@/lib/format";
-import { db } from "@/lib/db";
 import { Banknote, Receipt, Coins, CalendarRange } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -31,13 +30,10 @@ export default async function AdminSalesPage({
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
-  const restaurantIds = (await db.restaurant.findMany({ select: { id: true } })).map((r) => r.id);
-
   const from = sp.from ? new Date(sp.from + "T00:00:00Z") : undefined;
   const to = sp.to ? new Date(sp.to + "T23:59:59Z") : undefined;
 
   const result = await listSales({
-    restaurantIds,
     page,
     pageSize: PAGE_SIZE,
     from,

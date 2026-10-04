@@ -50,8 +50,9 @@ function LoginForm() {
       }
       toast.success(`Welcome back, ${json.data.user.fullName.split(" ")[0]}!`);
       const next = params.get("next");
+      // router.push alone fetches fresh server-rendered content for the target
+      // route; router.refresh() here would re-render it a second time.
       router.push(next && next !== "/login" ? next : json.data.user.redirectTo);
-      router.refresh();
     } catch {
       setError("Network error. Please try again.");
     } finally {

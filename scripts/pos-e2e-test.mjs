@@ -101,14 +101,12 @@ async function main() {
   const sale = { localSaleId: `${RUN}-sale-1`, saleNumber: "E2E-1", saleDate: iso(Date.now()), subtotal: 10, discount: 0, tax: 1, total: 11, paymentMethod: "CASH", status: "COMPLETED" };
   const order = { localOrderId: `${RUN}-ord-1`, orderNumber: "E2E-O1", orderDate: iso(Date.now()), subtotal: 10, tax: 1, total: 11, paymentMethod: "CASH", status: "COMPLETED", items: [{ localItemId: `${RUN}-it-1`, name: "E2E Item", quantity: 1, unitPrice: 10, total: 10, category: "Test" }] };
   const shift = { localShiftId: `${RUN}-shift-1`, shiftNumber: 999, openedAt: iso(Date.now() - 3600e3), closedAt: iso(Date.now()), cashierName: "E2E", openingCash: 100, closingCash: 111, expectedCash: 111, cashDifference: 0, orderCount: 1, grossSales: 11, refundsTotal: 0, expensesTotal: 0, netSales: 11 };
-  const refund = { localRefundId: `${RUN}-ref-1`, localOrderId: order.localOrderId, localSaleId: sale.localSaleId, orderNumber: "E2E-O1", amount: 5, reason: "E2E test refund", refundedAt: iso(Date.now()), cashierName: "E2E", supervisorName: "E2E", shiftLocalId: shift.localShiftId };
   const expense = { localExpenseId: `${RUN}-exp-1`, date: iso(Date.now()), category: "Test", description: "E2E test expense", amount: 3, cashierName: "E2E", shiftLocalId: shift.localShiftId };
 
   const streams = [
     ["/api/pos/sales/sync", { sales: [sale] }],
     ["/api/pos/orders/sync", { orders: [order] }],
     ["/api/pos/shifts/sync", { shifts: [shift] }],
-    ["/api/pos/refunds/sync", { refunds: [refund] }],
     ["/api/pos/expenses/sync", { expenses: [expense] }],
   ];
 
@@ -145,12 +143,10 @@ async function main() {
   const orders = await db.order.findMany({ where: { restaurantId, localOrderId: { startsWith: RUN } } });
   for (const o of orders) await db.orderItem.deleteMany({ where: { orderId: o.id } });
   const shifts = await db.shift.findMany({ where: { restaurantId, localShiftId: { startsWith: RUN } } });
-  const refunds = await db.refund.findMany({ where: { restaurantId, localRefundId: { startsWith: RUN } } });
   const expenses = await db.expense.findMany({ where: { restaurantId, localExpenseId: { startsWith: RUN } } });
   await db.sale.deleteMany({ where: { id: { in: sales.map((s) => s.id) } } });
   await db.order.deleteMany({ where: { id: { in: orders.map((o) => o.id) } } });
   await db.shift.deleteMany({ where: { id: { in: shifts.map((s) => s.id) } } });
-  await db.refund.deleteMany({ where: { id: { in: refunds.map((r) => r.id) } } });
   await db.expense.deleteMany({ where: { id: { in: expenses.map((e) => e.id) } } });
   if (device) {
     await db.syncLog.deleteMany({ where: { deviceId: device.id } });
