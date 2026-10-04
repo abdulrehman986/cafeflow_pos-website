@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
 const SESSION_COOKIE = "cf_session";
-const SESSION_SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-only-secret-change-me"
-);
+
+function requiredSecret(name: string): Uint8Array {
+  const value = process.env[name];
+  if (!value || value.length < 32) {
+    throw new Error(
+      `Missing or weak ${name}. Generate one with: openssl rand -hex 32`,
+    );
+  }
+  return new TextEncoder().encode(value);
+}
+
+const SESSION_SECRET = requiredSecret("AUTH_SECRET");
 
 /**
  * CORS for the POS device API (/api/pos/*).

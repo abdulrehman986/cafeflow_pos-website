@@ -26,9 +26,15 @@ export async function createSession(user: {
   id: string;
   role: string;
   clientId: string | null;
+  tokenVersion: number;
 }) {
   const token = await signSessionToken(
-    { sub: user.id, role: user.role, clientId: user.clientId },
+    {
+      sub: user.id,
+      role: user.role,
+      clientId: user.clientId,
+      tokenVersion: user.tokenVersion,
+    },
     SESSION_MAX_AGE_SECONDS,
   );
   const store = await cookies();
@@ -78,6 +84,7 @@ async function _getSessionUserImpl(): Promise<SessionUser | null> {
         clientId: true,
         phone: true,
         isActive: true,
+        tokenVersion: true,
         client: { select: { status: true } },
       },
     });
@@ -89,6 +96,11 @@ async function _getSessionUserImpl(): Promise<SessionUser | null> {
   // A suspended client business also blocks its login account
   if (profile.role === ROLES.CLIENT && profile.client?.status !== "ACTIVE")
     return null;
+  // Password changes bump tokenVersion — sessions issued before the change
+  // stop working immediately (stolen cookies die with the old password).
+  if (claims.tokenVersion !== profile.tokenVersion) {
+    return null;
+  }
 
   return {
     profileId: profile.id,

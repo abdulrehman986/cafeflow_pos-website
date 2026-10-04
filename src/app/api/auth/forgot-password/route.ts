@@ -25,22 +25,19 @@ export const POST = handler(async (req: NextRequest) => {
     where: { email: parsed.data.email },
   });
 
-  if (!profile) {
-    return ok({
-      accountFound: false,
-      message: "No account was found with this email address.",
+  // Uniform response — returning "account not found" would let anyone
+  // enumerate registered (admin!) emails.
+  if (profile) {
+    const token = await createPasswordResetToken(profile.id);
+    await sendPasswordResetEmail({
+      recipient: profile.email,
+      recipientName: profile.fullName,
+      token,
     });
   }
 
-  const token = await createPasswordResetToken(profile.id);
-  await sendPasswordResetEmail({
-    recipient: profile.email,
-    recipientName: profile.fullName,
-    token,
-  });
-
   return ok({
-    accountFound: true,
-    message: "A password reset link has been sent to your email address.",
+    message:
+      "If an account exists for this address, a password reset link has been sent.",
   });
 });

@@ -48,7 +48,12 @@ export const POST = handler(async (req: NextRequest) => {
   }
 
   await db.profile.update({ where: { id: profile.id }, data: { lastLoginAt: new Date() } });
-  await createSession({ id: profile.id, role: profile.role, clientId: profile.clientId });
+  await createSession({
+    id: profile.id,
+    role: profile.role,
+    clientId: profile.clientId,
+    tokenVersion: profile.tokenVersion,
+  });
 
   return ok({
     user: {

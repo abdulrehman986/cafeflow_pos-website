@@ -35,7 +35,11 @@ export function rateLimit(key: string, limit: number, windowSeconds: number): Ra
 }
 
 export function clientIp(req: Request): string {
+  // Vercel sets x-real-ip itself (not client-spoofable); x-forwarded-for can
+  // carry client-supplied entries, so it is only a fallback.
+  const real = req.headers.get("x-real-ip");
+  if (real) return real.trim();
   const fwd = req.headers.get("x-forwarded-for");
   if (fwd) return fwd.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
+  return "unknown";
 }

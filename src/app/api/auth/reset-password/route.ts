@@ -27,7 +27,10 @@ export const POST = handler(async (req: NextRequest) => {
   await db.$transaction([
     db.profile.update({
       where: { id: record.profileId },
-      data: { passwordHash: await hashPassword(parsed.data.password) },
+      data: {
+        passwordHash: await hashPassword(parsed.data.password),
+        tokenVersion: { increment: 1 },
+      },
     }),
     db.passwordResetToken.update({
       where: { id: record.id },

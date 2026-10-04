@@ -32,6 +32,9 @@ model Profile {
   clientId     String?  @unique
   client       Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   isActive     Boolean  @default(true)
+  // Bumped on every password change/reset — JWTs issued before the bump
+  // stop working, so stolen session cookies die with the old password.
+  tokenVersion Int      @default(0)
   lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

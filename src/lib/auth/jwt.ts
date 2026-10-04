@@ -1,17 +1,31 @@
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { ROLES } from "@/lib/constants";
 
-const SESSION_SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-only-secret-change-me"
-);
-const POS_SECRET = new TextEncoder().encode(
-  process.env.POS_TOKEN_SECRET || process.env.AUTH_SECRET || "dev-only-secret-change-me"
-);
+/**
+ * Secrets are REQUIRED: booting without them must fail loudly instead of
+ * silently signing tokens with a publicly-known constant (total auth bypass).
+ * Each purpose gets its own key — a leak of one must not forge the other.
+ */
+function requiredSecret(name: string): Uint8Array {
+  const value = process.env[name];
+  if (!value || value.length < 32) {
+    throw new Error(
+      `Missing or weak ${name}. Generate one with: openssl rand -hex 32`,
+    );
+  }
+  return new TextEncoder().encode(value);
+}
+
+const SESSION_SECRET = requiredSecret("AUTH_SECRET");
+const POS_SECRET = requiredSecret("POS_TOKEN_SECRET");
 
 export interface SessionClaims extends JWTPayload {
   sub: string; // profile id
   role: string; // SUPER_ADMIN | CLIENT
   clientId: string | null;
+  /** Matches Profile.tokenVersion — bumped on password change, so sessions
+   * issued before a credential change stop working immediately. */
+  tokenVersion: number;
 }
 
 export interface DeviceTokenClaims extends JWTPayload {

@@ -44,12 +44,13 @@ export const POST = handler(async (req: NextRequest) => {
     include: { restaurant: { select: { name: true, status: true } } },
   });
   if (!license) return fail("LICENSE_NOT_FOUND", "License key not found.");
+  // Deliberately omit restaurant metadata here: this mode is unauthenticated
+  // and must not leak which business a key belongs to.
   return ok({
     licenseKey: license.licenseKey,
     status: license.status,
     expiresAt: license.expiresAt,
     daysRemaining: Math.max(0, Math.ceil((license.expiresAt.getTime() - Date.now()) / 86400000)),
-    restaurant: license.restaurant.name,
     maxDevices: license.maxDevices,
     serverTime: new Date().toISOString(),
   });

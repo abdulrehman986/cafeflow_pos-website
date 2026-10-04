@@ -22,7 +22,10 @@ export const POST = handler(async (req: NextRequest) => {
 
   await db.profile.update({
     where: { id: user.profileId },
-    data: { passwordHash: await hashPassword(parsed.data.newPassword) },
+    data: {
+      passwordHash: await hashPassword(parsed.data.newPassword),
+      tokenVersion: { increment: 1 },
+    },
   });
 
   return ok({ message: "Password changed successfully." });
