@@ -1,44 +1,43 @@
-import { Suspense } from "react";
 import Link from "next/link";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { StatusBadge, PaymentBadge } from "@/components/shared/status-badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
+import { StatusBadge, PaymentBadge } from "@/components/shared/status-badge";
 import { PageHeader, EmptyState } from "@/components/shared/table-kit";
-import { FilterToolbar, UrlPagination } from "@/components/shared/filter-toolbar";
+import { UrlPagination, FilterToolbar } from "@/components/shared/filter-toolbar";
 import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-filter";
+import { requireClientPage } from "@/lib/auth/guards";
 import { listOrders } from "@/lib/services/dashboard";
+import { db } from "@/lib/db";
 import { formatRs, formatNumber, fmtDate, fmtTime } from "@/lib/format";
-import { Receipt, Banknote, Coins, CalendarRange, ChevronRight } from "lucide-react";
+import { Receipt, Banknote, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 15;
 
-export default async function AdminOrdersPage({
+/** Order history across ALL of the owner's restaurants. */
+export default async function ClientOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; from?: string; to?: string; status?: string; restaurantId?: string; page?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; status?: string; q?: string; page?: string }>;
 }) {
+  const user = await requireClientPage();
+
+  const restaurants = await db.restaurant.findMany({
+    where: { clientId: user.clientId! },
+    select: { id: true },
+    orderBy: { createdAt: "asc" },
+  });
+
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
-
-  // Omit the scope for platform-wide listings — only filter when a restaurant
-  // is explicitly selected in the URL.
-  const restaurantIds = sp.restaurantId ? [sp.restaurantId] : undefined;
-
   const from = sp.from ? new Date(sp.from + "T00:00:00Z") : undefined;
   const to = sp.to ? new Date(sp.to + "T23:59:59Z") : undefined;
 
   const result = await listOrders({
-    restaurantIds,
+    restaurantIds: restaurants.map((r) => r.id),
     page,
     pageSize: PAGE_SIZE,
     from,
@@ -46,20 +45,19 @@ export default async function AdminOrdersPage({
     status: sp.status,
     search: sp.q,
   });
-
   const avg = result.total > 0 ? result.sum / result.total : 0;
 
   return (
     <>
       <PageHeader
         title="Orders"
-        description="Synced order history with full item detail from every restaurant."
+        description="Order history across all your restaurants, synced from your POS terminals."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard title="Filtered order value" value={formatRs(result.sum)} icon={Banknote} tone="positive" />
         <StatCard title="Orders" value={formatNumber(result.total)} icon={Receipt} />
-        <StatCard title="Average order" value={formatRs(avg)} icon={Coins} />
+        <StatCard title="Average order" value={formatRs(avg)} icon={ChevronRight} />
       </div>
 
       <Suspense>
@@ -88,16 +86,16 @@ export default async function AdminOrdersPage({
         <CardContent className="p-0">
           {result.rows.length === 0 ? (
             <EmptyState
-              icon={<CalendarRange className="h-6 w-6 text-muted-foreground" />}
+              icon={<Receipt className="h-6 w-6 text-muted-foreground" />}
               title="No orders found"
-              description="Orders appear here once POS terminals sync. Try widening the date range."
+              description="No synced orders match the current filters."
             />
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Order</TableHead>
+                    <TableHead>Order #</TableHead>
                     <TableHead>Restaurant</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Time</TableHead>
@@ -112,11 +110,7 @@ export default async function AdminOrdersPage({
                   {result.rows.map((o) => (
                     <TableRow key={o.id}>
                       <TableCell><code className="text-sm">{o.orderNumber}</code></TableCell>
-                      <TableCell>
-                        <Link href={`/admin/orders?restaurantId=${o.restaurantId}`} className="text-sm hover:text-primary">
-                          {o.restaurant.name}
-                        </Link>
-                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{o.restaurant.name}</TableCell>
                       <TableCell className="text-sm">{fmtDate(o.orderDate)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{fmtTime(o.orderDate)}</TableCell>
                       <TableCell className="text-sm tabular-nums">{o._count.items}</TableCell>
@@ -125,7 +119,7 @@ export default async function AdminOrdersPage({
                       <TableCell className="text-right text-sm font-semibold tabular-nums">{formatRs(o.total)}</TableCell>
                       <TableCell>
                         <Link
-                          href={`/admin/orders/${o.id}`}
+                          href={`/client/restaurants/${o.restaurantId}/orders/${o.id}`}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"
                           aria-label={`View order ${o.orderNumber}`}
                         >

@@ -11,8 +11,9 @@ import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-fil
 import { SalesTrendChart } from "@/components/dashboard/charts";
 import { requireClientPage, assertRestaurantAccess } from "@/lib/auth/guards";
 import { getSalesSeries, listSales, getPaymentSplit } from "@/lib/services/dashboard";
+import { getTerminalBreakdown } from "@/lib/services/shifts";
 import { formatRs, formatNumber, fmtDate, fmtTime, startOfDayUTC, addDays } from "@/lib/format";
-import { Banknote, Receipt, Coins, TrendingUp } from "lucide-react";
+import { Banknote, Receipt, Coins, TrendingUp, MonitorSmartphone } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -38,10 +39,11 @@ export default async function ClientRestaurantSalesPage({
   const from = sp.from ? new Date(sp.from + "T00:00:00Z") : undefined;
   const to = sp.to ? new Date(sp.to + "T23:59:59Z") : undefined;
 
-  const [result, series, paymentSplit] = await Promise.all([
+  const [result, series, paymentSplit, terminals] = await Promise.all([
     listSales({ restaurantIds: [id], page, pageSize: PAGE_SIZE, from, to, paymentMethod: sp.paymentMethod }),
     getSalesSeries({ restaurantIds: [id], from: from ?? addDays(startOfDayUTC(new Date()), -29), to: to ?? new Date() }),
     getPaymentSplit({ restaurantIds: [id], from, to }),
+    getTerminalBreakdown({ restaurantIds: [id], from: from ?? addDays(startOfDayUTC(new Date()), -29), to: to ?? new Date() }),
   ]);
 
   const avg = result.total > 0 ? result.sum / result.total : 0;
@@ -107,6 +109,84 @@ export default async function ClientRestaurantSalesPage({
           ))}
         </div>
       )}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Daily sales summary */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Daily sales summary</CardTitle>
+            <CardDescription>Revenue and transactions per day</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto max-h-96">
+              <Table>
+                <TableHeader className="sticky top-0 bg-card">
+                  <TableRow>
+                    <TableHead>Day</TableHead>
+                    <TableHead className="text-right">Transactions</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...series].reverse().map((d) => (
+                    <TableRow key={d.date}>
+                      <TableCell className="text-sm">{fmtDate(d.date + "T00:00:00Z")}</TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">{formatNumber(d.orders)}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold tabular-nums">{formatRs(d.total)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {series.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-sm text-muted-foreground py-8">
+                        No sales in this range.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sales by POS terminal */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <MonitorSmartphone className="h-5 w-5" /> Sales by POS terminal
+            </CardTitle>
+            <CardDescription>Attribution starts with syncs after terminal tracking went live</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Terminal</TableHead>
+                  <TableHead className="text-right">Sales</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
+                  <TableHead className="text-right">Orders</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {terminals.map((t) => (
+                  <TableRow key={t.deviceId ?? "unattributed"}>
+                    <TableCell className="text-sm font-medium">{t.deviceName}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">{formatNumber(t.salesCount)}</TableCell>
+                    <TableCell className="text-right text-sm font-semibold tabular-nums">{formatRs(t.salesTotal)}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">{formatNumber(t.ordersCount)}</TableCell>
+                  </TableRow>
+                ))}
+                {terminals.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
+                      No terminal-attributed sales yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader className="pb-0 pt-5">

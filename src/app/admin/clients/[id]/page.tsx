@@ -24,7 +24,13 @@ import {
   ClientStatusActions,
   ClientDeleteButton,
 } from "@/components/admin/client-actions";
+import {
+  SupportAccessActions,
+  SupportDetailLinks,
+} from "@/components/admin/support-access";
 import { getClientDetail } from "@/lib/services/clients";
+import { getSessionUser } from "@/lib/auth/session";
+import { getActiveGrant } from "@/lib/services/support";
 import { formatRs, formatNumber, fmtDate, fmtDateTime } from "@/lib/format";
 import { licenseEffectiveStatus } from "@/lib/license-key";
 import {
@@ -38,6 +44,7 @@ import {
   Mail,
   Phone,
   CalendarDays,
+  ShieldCheck,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -48,8 +55,9 @@ export default async function AdminClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detail = await getClientDetail(id);
+  const [detail, user] = await Promise.all([getClientDetail(id), getSessionUser()]);
   if (!detail) notFound();
+  const activeGrant = user ? await getActiveGrant(user.profileId, id) : null;
 
   const { client, restaurants, devices, salesSummary, accounts } = detail;
 
@@ -84,9 +92,41 @@ export default async function AdminClientDetailPage({
               name={client.companyName}
               hasRestaurants={restaurants.length > 0}
             />
+            <SupportAccessActions
+              clientId={client.id}
+              activeGrant={
+                activeGrant
+                  ? {
+                      id: activeGrant.id,
+                      reason: activeGrant.reason,
+                      createdAt: activeGrant.createdAt.toISOString(),
+                      expiresAt: activeGrant.expiresAt.toISOString(),
+                    }
+                  : null
+              }
+            />
           </>
         }
       />
+
+      {/* Active support access banner — links to grant-gated detail views */}
+      {activeGrant && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-amber-600" />
+                Support access active — expires {fmtDateTime(activeGrant.expiresAt)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Reason: {activeGrant.reason} · Every order/sales view is recorded
+                in the audit log.
+              </p>
+            </div>
+            <SupportDetailLinks clientId={client.id} />
+          </div>
+        </div>
+      )}
 
       {/* Contact card */}
       <Card>

@@ -186,7 +186,7 @@ export async function getClientDevicesScoped(clientId: string) {
     where: { restaurant: { clientId } },
     orderBy: { lastSeenAt: "desc" },
     include: {
-      restaurant: { select: { name: true } },
+      restaurant: { select: { id: true, name: true } },
       license: { select: { licenseKey: true, status: true, expiresAt: true, maxDevices: true } },
     },
   });

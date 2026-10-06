@@ -40,6 +40,8 @@ model Profile {
   updatedAt    DateTime @updatedAt
 
   resetTokens PasswordResetToken[]
+  supportGrants SupportGrant[]
+  auditLogs     AuditLog[]
 
   @@index([role])
   @@index([clientId])
@@ -77,6 +79,7 @@ model Client {
 
   profiles     Profile[]
   restaurants  Restaurant[]
+  supportGrants SupportGrant[]
 
   @@index([status])
   @@map("clients")
@@ -161,6 +164,11 @@ model Device {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  sales    Sale[]
+  orders   Order[]
+  shifts   Shift[]
+  expenses Expense[]
+
   @@unique([restaurantId, deviceIdentifier])
   @@index([restaurantId])
   @@index([licenseId])
@@ -176,6 +184,10 @@ model Sale {
   id            String   @id @default(uuid())
   restaurantId  String
   restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  // POS terminal that uploaded the record (stamped server-side from the device
+  // token at sync time; null for records synced before this column existed)
+  deviceId      String?
+  device        Device?  @relation(fields: [deviceId], references: [id], onDelete: SetNull)
   localSaleId   String
   saleNumber    String?
   saleDate      DateTime
@@ -195,6 +207,7 @@ model Sale {
   @@index([restaurantId, saleDate])
   @@index([saleDate])
   @@index([status])
+  @@index([deviceId])
   @@map("sales")
 }
 
@@ -206,6 +219,9 @@ model Order {
   id            String   @id @default(uuid())
   restaurantId  String
   restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  // POS terminal that uploaded the record (stamped server-side at sync time)
+  deviceId      String?
+  device        Device?  @relation(fields: [deviceId], references: [id], onDelete: SetNull)
   localOrderId  String
   orderNumber   String
   orderDate     DateTime
@@ -227,6 +243,7 @@ model Order {
   @@index([restaurantId, orderDate])
   @@index([orderDate])
   @@index([status])
+  @@index([deviceId])
   @@map("orders")
 }
 
@@ -254,6 +271,9 @@ model Shift {
   id             String     @id @default(uuid())
   restaurantId   String
   restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  // POS terminal that uploaded the record (stamped server-side at sync time)
+  deviceId       String?
+  device         Device?    @relation(fields: [deviceId], references: [id], onDelete: SetNull)
   localShiftId   String
   shiftNumber    Int?
   openedAt       DateTime
@@ -274,6 +294,7 @@ model Shift {
   @@unique([restaurantId, localShiftId])
   @@index([restaurantId, openedAt])
   @@index([openedAt])
+  @@index([deviceId])
   @@map("shifts")
 }
 
@@ -285,6 +306,9 @@ model Expense {
   id             String     @id @default(uuid())
   restaurantId   String
   restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  // POS terminal that uploaded the record (stamped server-side at sync time)
+  deviceId       String?
+  device         Device?    @relation(fields: [deviceId], references: [id], onDelete: SetNull)
   localExpenseId String
   date           DateTime
   category       String?
@@ -298,6 +322,7 @@ model Expense {
   @@unique([restaurantId, localExpenseId])
   @@index([restaurantId, date])
   @@index([date])
+  @@index([deviceId])
   @@map("expenses")
 }
 
@@ -322,4 +347,50 @@ model SyncLog {
   @@index([restaurantId])
   @@index([createdAt])
   @@map("sync_logs")
+}
+
+// ─────────────────────── SUPPORT ACCESS (break-glass) ───────────────────────
+// Super Admins cannot browse client business data (orders, sales detail) by
+// default. To help a specific client they must create a time-boxed grant with
+// a written reason; every detail view made under a grant is written to
+// AuditLog. Grants auto-expire and can be revoked.
+
+model SupportGrant {
+  id             String    @id @default(uuid())
+  adminProfileId String
+  adminProfile   Profile   @relation(fields: [adminProfileId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  reason         String
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+
+  @@index([adminProfileId, clientId])
+  @@index([clientId])
+  @@map("support_grants")
+}
+
+// ─────────────────────── AUDIT LOG ───────────────────────
+// Append-only trail for sensitive actions: support-grant lifecycle and every
+// order/sales detail view made under an active grant.
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  actorProfileId String?
+  actorProfile   Profile? @relation(fields: [actorProfileId], references: [id], onDelete: SetNull)
+  // Denormalized so the trail survives profile deletion
+  actorEmail     String
+  // e.g. SUPPORT_GRANT_CREATE, SUPPORT_GRANT_REVOKE, VIEW_ORDERS, VIEW_ORDER_DETAIL, VIEW_SALES
+  action         String
+  targetType     String?
+  targetId       String?
+  clientId       String?
+  metadata       String?
+  createdAt      DateTime @default(now())
+
+  @@index([actorProfileId])
+  @@index([clientId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

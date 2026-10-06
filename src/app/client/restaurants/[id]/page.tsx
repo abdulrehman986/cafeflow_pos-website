@@ -21,6 +21,7 @@ import {
   ChevronRight,
   CloudUpload,
   MonitorSmartphone,
+  Clock,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,11 @@ export default async function ClientRestaurantDashboardPage({
             <Button asChild variant="outline" size="sm">
               <Link href={`/client/restaurants/${id}/sales`}>
                 <BarChart3 className="h-4 w-4" /> Sales dashboard
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/client/restaurants/${id}/shifts`}>
+                <Clock className="h-4 w-4" /> Shifts
               </Link>
             </Button>
             <Button asChild size="sm">

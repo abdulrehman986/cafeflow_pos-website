@@ -95,6 +95,18 @@ export const adminPasswordResetSchema = z.object({
   password: clientPasswordPolicy.optional(),
 });
 
+// ─────────────────────────── Admin: support access ───────────────────────────
+
+export const supportGrantSchema = z.object({
+  clientId: z.string().uuid("Client is required"),
+  reason: z
+    .string()
+    .trim()
+    .min(10, "Describe the support reason (at least 10 characters)")
+    .max(500),
+  hours: z.coerce.number().int().min(1).max(24).default(4),
+});
+
 // ─────────────────────────── Admin: restaurants ───────────────────────────
 
 export const createRestaurantSchema = z.object({
@@ -167,7 +179,7 @@ export const posSaleRecordSchema = z.object({
   saleNumber: z.string().max(40).optional(),
   saleDate: z
     .string()
-    .datetime({ offset: true }, { message: "saleDate must be ISO 8601" }),
+    .datetime({ offset: true, message: "saleDate must be ISO 8601" }),
   subtotal: z.coerce.number().min(0).optional().default(0),
   discount: z.coerce.number().min(0).optional().default(0),
   tax: z.coerce.number().min(0).optional().default(0),
@@ -196,7 +208,7 @@ export const posOrderRecordSchema = z.object({
   orderNumber: z.string().min(1).max(40),
   orderDate: z
     .string()
-    .datetime({ offset: true }, { message: "orderDate must be ISO 8601" }),
+    .datetime({ offset: true, message: "orderDate must be ISO 8601" }),
   subtotal: z.coerce.number().min(0).optional().default(0),
   discount: z.coerce.number().min(0).optional().default(0),
   tax: z.coerce.number().min(0).optional().default(0),
@@ -217,10 +229,10 @@ export const posShiftRecordSchema = z.object({
   shiftNumber: z.coerce.number().int().min(0).optional(),
   openedAt: z
     .string()
-    .datetime({ offset: true }, { message: "openedAt must be ISO 8601" }),
+    .datetime({ offset: true, message: "openedAt must be ISO 8601" }),
   closedAt: z
     .string()
-    .datetime({ offset: true }, { message: "closedAt must be ISO 8601" }),
+    .datetime({ offset: true, message: "closedAt must be ISO 8601" }),
   cashierName: z.string().max(80).optional(),
   openingCash: z.coerce.number().min(0).optional(),
   closingCash: z.coerce.number().min(0).optional(),
@@ -242,7 +254,7 @@ export const posExpenseRecordSchema = z.object({
   localExpenseId: z.string().min(1, "localExpenseId is required").max(64),
   date: z
     .string()
-    .datetime({ offset: true }, { message: "date must be ISO 8601" }),
+    .datetime({ offset: true, message: "date must be ISO 8601" }),
   category: z.string().max(60).optional(),
   description: z.string().max(200).optional(),
   amount: z.coerce.number().min(0),

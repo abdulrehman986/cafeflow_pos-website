@@ -46,7 +46,12 @@ export const POST = handler(async (req: NextRequest, ctx: Ctx) => {
   await db.$transaction([
     db.profile.update({
       where: { id: profile.id },
-      data: { passwordHash: await hashPassword(password) },
+      data: {
+        passwordHash: await hashPassword(password),
+        // Kill any session issued before this reset — same as self-service
+        // change and token-based reset.
+        tokenVersion: { increment: 1 },
+      },
     }),
     db.passwordResetToken.deleteMany({ where: { profileId: profile.id } }),
   ]);

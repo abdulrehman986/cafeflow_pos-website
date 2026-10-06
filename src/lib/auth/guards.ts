@@ -1,8 +1,9 @@
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { fail } from "@/lib/api";
 import { getSessionUser, type SessionUser } from "./session";
 import { ROLES } from "@/lib/constants";
+import { getActiveGrantCached, type SupportGrant } from "@/lib/services/support";
 
 // ─────────────────── Page guards (server components / layouts) ───────────────────
 
@@ -43,6 +44,30 @@ export async function requireClientApi(): Promise<
   if (!user.clientId)
     return { ok: false, response: fail("FORBIDDEN", "Account is not linked to a client business.") };
   return { ok: true, user };
+}
+
+// ─────────────────── Support access (break-glass) ───────────────────
+// Admin order/sales detail is reachable ONLY while a time-boxed SupportGrant
+// is active for that specific client. The gate runs in generateMetadata —
+// which resolves before the streaming shell flushes — so a missing grant
+// yields a true 404 status, not a streamed 404 inside a 200 response.
+
+/** For generateMetadata: throws notFound() before the response streams. */
+export async function requireSupportGate(clientId: string): Promise<void> {
+  const user = await getSessionUser();
+  if (!user || user.role !== ROLES.SUPER_ADMIN) notFound();
+  const grant = await getActiveGrantCached(user.profileId, clientId);
+  if (!grant) notFound();
+}
+
+/** For the page itself: returns the session user and active grant. */
+export async function requireSupportPage(
+  clientId: string
+): Promise<{ user: SessionUser; grant: SupportGrant } | null> {
+  const user = await requireAdminPage();
+  const grant = await getActiveGrantCached(user.profileId, clientId);
+  if (!grant) return null;
+  return { user, grant };
 }
 
 // ─────────────────── Row-level scoping (the app-level "RLS") ───────────────────

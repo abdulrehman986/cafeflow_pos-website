@@ -390,7 +390,9 @@ export async function listOrders(opts: {
 }
 
 // ─────────────────────── POS terminal sync (shifts / expenses) ───────────────────────
-// Data uploaded by the desktop POS via /api/pos/{shifts,expenses}/sync.
+// Aggregate metrics for the admin dashboard. The admin never sees individual
+// shift/expense rows — cash-drawer detail is only visible to the owning
+// client (and to audited support grants).
 
 export async function getPosSyncOverview() {
   const [shifts, expenses, lastShift, lastExpense] = await Promise.all([
@@ -406,18 +408,16 @@ export async function getPosSyncOverview() {
   return { shifts, expenses, lastSyncedAt };
 }
 
-export async function listRecentShifts(limit = 6) {
-  return db.shift.findMany({
-    orderBy: { closedAt: "desc" },
-    take: limit,
-    include: { restaurant: { select: { name: true } } },
-  });
-}
-
-export async function listRecentExpenses(limit = 6) {
-  return db.expense.findMany({
-    orderBy: { date: "desc" },
-    take: limit,
-    include: { restaurant: { select: { name: true } } },
-  });
+/** Terminal activity counts for the admin dashboard: active POS terminals
+ *  (device token used in the last 24h) and records synced in the last 24h.
+ *  Counts only — no per-shift or per-expense rows leave the aggregate layer. */
+export async function getAdminTerminalActivity() {
+  const since = new Date(Date.now() - 24 * 3600 * 1000);
+  const [activeTerminals, totalTerminals, shifts24h, expenses24h] = await Promise.all([
+    db.device.count({ where: { status: "ACTIVE", lastSeenAt: { gte: since } } }),
+    db.device.count({ where: { status: "ACTIVE" } }),
+    db.shift.count({ where: { syncedAt: { gte: since } } }),
+    db.expense.count({ where: { syncedAt: { gte: since } } }),
+  ]);
+  return { activeTerminals, totalTerminals, shifts24h, expenses24h };
 }

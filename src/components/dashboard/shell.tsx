@@ -25,7 +25,6 @@ import {
   Store,
   KeyRound,
   MonitorSmartphone,
-  BarChart3,
   Receipt,
   FileBarChart,
   Settings,
@@ -35,6 +34,7 @@ import {
   Menu,
   ShieldCheck,
   BadgeCheck,
+  Clock,
 } from "lucide-react";
 
 export interface NavItem {
@@ -43,21 +43,26 @@ export interface NavItem {
   icon: React.ElementType;
 }
 
+// Super Admin sees aggregate/platform metrics only — order-level and
+// transaction-level detail lives exclusively in the client dashboard
+// (see /admin/clients/[id] support access for the audited exception).
 const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/clients", label: "Clients", icon: Users },
   { href: "/admin/restaurants", label: "Restaurants", icon: Store },
   { href: "/admin/licenses", label: "Licenses", icon: KeyRound },
   { href: "/admin/devices", label: "Devices", icon: MonitorSmartphone },
-  { href: "/admin/sales", label: "Sales", icon: BarChart3 },
-  { href: "/admin/orders", label: "Orders", icon: Receipt },
   { href: "/admin/reports", label: "Reports", icon: FileBarChart },
+  { href: "/admin/audit", label: "Audit log", icon: ShieldCheck },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 const CLIENT_NAV: NavItem[] = [
   { href: "/client", label: "Dashboard", icon: LayoutDashboard },
   { href: "/client/restaurants", label: "My Restaurants", icon: Building2 },
+  { href: "/client/orders", label: "Orders", icon: Receipt },
+  { href: "/client/shifts", label: "Shifts", icon: Clock },
+  { href: "/client/reports", label: "Reports", icon: FileBarChart },
   { href: "/client/licenses", label: "Licenses", icon: KeyRound },
   { href: "/client/devices", label: "Devices", icon: MonitorSmartphone },
   { href: "/client/profile", label: "Profile", icon: UserRound },

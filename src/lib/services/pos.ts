@@ -291,6 +291,7 @@ export async function syncSales(
       await db.sale.create({
         data: {
           restaurantId: ctx.restaurant.id,
+          deviceId: ctx.device.id,
           localSaleId: sale.localSaleId,
           saleNumber: sale.saleNumber,
           saleDate: new Date(sale.saleDate),
@@ -379,6 +380,7 @@ export async function syncOrders(
       await db.order.create({
         data: {
           restaurantId: ctx.restaurant.id,
+          deviceId: ctx.device.id,
           localOrderId: order.localOrderId,
           orderNumber: order.orderNumber,
           orderDate: new Date(order.orderDate),
@@ -475,6 +477,7 @@ export async function syncShifts(
       await db.shift.create({
         data: {
           restaurantId: ctx.restaurant.id,
+          deviceId: ctx.device.id,
           localShiftId: shift.localShiftId,
           shiftNumber: shift.shiftNumber,
           openedAt: new Date(shift.openedAt),
@@ -556,6 +559,7 @@ export async function syncExpenses(
       await db.expense.create({
         data: {
           restaurantId: ctx.restaurant.id,
+          deviceId: ctx.device.id,
           localExpenseId: expense.localExpenseId,
           date: new Date(expense.date),
           category: expense.category,

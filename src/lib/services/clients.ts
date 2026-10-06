@@ -101,12 +101,52 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
     orderBy: { createdAt: "asc" },
     include: {
       licenses: { where: { status: { not: "REVOKED" } }, orderBy: { createdAt: "desc" }, take: 1 },
-      devices: true,
-      sales: { select: { saleDate: true, total: true } },
-      orders: { select: { id: true }, take: 200 },
+      devices: { select: { id: true, status: true } },
       syncLogs: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
     },
   });
+
+  // Aggregate sales metrics in SQL — client detail must never load raw
+  // transaction rows (admin sees aggregates only, and rows scale unbounded).
+  const restaurantIds = restaurants.map((r) => r.id);
+  const salesAgg = restaurantIds.length
+    ? await db.sale.groupBy({
+        by: ["restaurantId"],
+        where: { restaurantId: { in: restaurantIds }, status: "COMPLETED" },
+        _sum: { total: true },
+        _count: true,
+      })
+    : [];
+  const [todayAgg, monthAgg, d30Agg, totalAgg] = await Promise.all([
+    restaurantIds.length
+      ? db.sale.groupBy({
+          by: ["restaurantId"],
+          where: { restaurantId: { in: restaurantIds }, status: "COMPLETED", saleDate: { gte: todayStart } },
+          _sum: { total: true },
+        })
+      : Promise.resolve([] as Array<{ restaurantId: string; _sum: { total: number | null } }>),
+    restaurantIds.length
+      ? db.sale.groupBy({
+          by: ["restaurantId"],
+          where: { restaurantId: { in: restaurantIds }, status: "COMPLETED", saleDate: { gte: monthStart } },
+          _sum: { total: true },
+        })
+      : Promise.resolve([] as Array<{ restaurantId: string; _sum: { total: number | null } }>),
+    restaurantIds.length
+      ? db.sale.groupBy({
+          by: ["restaurantId"],
+          where: { restaurantId: { in: restaurantIds }, status: "COMPLETED", saleDate: { gte: d30 } },
+          _sum: { total: true },
+        })
+      : Promise.resolve([] as Array<{ restaurantId: string; _sum: { total: number | null } }>),
+    restaurantIds.length
+      ? db.order.groupBy({
+          by: ["restaurantId"],
+          where: { restaurantId: { in: restaurantIds } },
+          _count: true,
+        })
+      : Promise.resolve([] as Array<{ restaurantId: string; _count: number }>),
+  ]);
 
   const devices = await db.device.findMany({
     where: { restaurant: { clientId } },
@@ -119,7 +159,12 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
     select: { id: true, email: true, fullName: true, lastLoginAt: true, isActive: true },
   });
 
-  const allSales = restaurants.flatMap((r) => r.sales);
+  const lifetimeByRestaurant = new Map(salesAgg.map((r) => [r.restaurantId, r._sum.total ?? 0]));
+  const todayByRestaurant = new Map(todayAgg.map((r) => [r.restaurantId, r._sum.total ?? 0]));
+  const monthByRestaurant = new Map(monthAgg.map((r) => [r.restaurantId, r._sum.total ?? 0]));
+  const d30ByRestaurant = new Map(d30Agg.map((r) => [r.restaurantId, r._sum.total ?? 0]));
+  const ordersByRestaurant = new Map(totalAgg.map((r) => [r.restaurantId, r._count]));
+  const sumOf = (m: Map<string, number>) => Array.from(m.values()).reduce((a, v) => a + v, 0);
 
   return {
     client: {
@@ -128,12 +173,6 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
     },
     restaurants: restaurants.map((r) => {
       const license = r.licenses[0] ?? null;
-      const today = r.sales
-        .filter((s) => s.saleDate >= todayStart)
-        .reduce((a, s) => a + s.total, 0);
-      const month = r.sales
-        .filter((s) => s.saleDate >= monthStart)
-        .reduce((a, s) => a + s.total, 0);
       return {
         id: r.id, name: r.name, city: r.city, status: r.status, createdAt: r.createdAt,
         license: license
@@ -145,9 +184,9 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
           : null,
         deviceCount: r.devices.length,
         activeDevices: r.devices.filter((d) => d.status === "ACTIVE").length,
-        todaySales: today,
-        monthSales: month,
-        totalOrders: r.orders.length,
+        todaySales: todayByRestaurant.get(r.id) ?? 0,
+        monthSales: monthByRestaurant.get(r.id) ?? 0,
+        totalOrders: ordersByRestaurant.get(r.id) ?? 0,
         lastSyncAt: r.syncLogs[0]?.createdAt ?? null,
       };
     }),
@@ -157,11 +196,11 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
       activatedAt: d.activatedAt, lastSeenAt: d.lastSeenAt,
     })),
     salesSummary: {
-      today: allSales.filter((s) => s.saleDate >= todayStart).reduce((a, s) => a + s.total, 0),
-      month: allSales.filter((s) => s.saleDate >= monthStart).reduce((a, s) => a + s.total, 0),
-      total: allSales.reduce((a, s) => a + s.total, 0),
-      last30: allSales.filter((s) => s.saleDate >= d30).reduce((a, s) => a + s.total, 0),
-      orderCount: allSales.length,
+      today: sumOf(todayByRestaurant),
+      month: sumOf(monthByRestaurant),
+      total: sumOf(lifetimeByRestaurant),
+      last30: sumOf(d30ByRestaurant),
+      orderCount: Array.from(ordersByRestaurant.values()).reduce((a, v) => a + v, 0),
     },
     accounts,
   };
