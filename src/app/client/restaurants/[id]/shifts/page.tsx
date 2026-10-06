@@ -10,7 +10,7 @@ import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-fil
 import { CashDiffBadge } from "@/components/shared/cash-diff-badge";
 import { requireClientPage, assertRestaurantAccess } from "@/lib/auth/guards";
 import { listShifts } from "@/lib/services/shifts";
-import { formatRs, formatNumber, fmtDateTime, fmtTime } from "@/lib/format";
+import { formatRs, formatNumber, fmtDateTime, fmtTime, shiftRef } from "@/lib/format";
 import { Clock, Banknote, Receipt, Wallet, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -96,7 +96,7 @@ export default async function ClientRestaurantShiftsPage({
                 <TableBody>
                   {result.rows.map((s) => (
                     <TableRow key={s.id}>
-                      <TableCell><code className="text-sm">{s.shiftNumber != null ? `#${s.shiftNumber}` : s.localShiftId.slice(0, 10)}</code></TableCell>
+                      <TableCell><code className="text-sm">{shiftRef(s.localShiftId, s.openedAt)}</code></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{s.device ? (s.device.deviceName ?? s.device.deviceIdentifier) : "Unattributed"}</TableCell>
                       <TableCell className="text-sm whitespace-nowrap">{fmtDateTime(s.openedAt)}</TableCell>
                       <TableCell className="text-sm whitespace-nowrap text-muted-foreground">{fmtTime(s.closedAt)}</TableCell>

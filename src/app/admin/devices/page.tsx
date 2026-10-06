@@ -13,7 +13,7 @@ import { PageHeader, EmptyState } from "@/components/shared/table-kit";
 import { FilterToolbar, UrlPagination } from "@/components/shared/filter-toolbar";
 import { DeviceRowActions } from "@/components/admin/device-actions";
 import { listDevices } from "@/lib/services/restaurants";
-import { formatNumber, fmtDate, fmtDateTime } from "@/lib/format";
+import { formatNumber, fmtDate, fmtDateTime, formatOsInfo } from "@/lib/format";
 import { MonitorSmartphone } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -94,7 +94,7 @@ export default async function AdminDevicesPage({
                       </TableCell>
                       <TableCell><code className="text-xs">{d.licenseKey}</code></TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {d.osInfo ?? "Windows"}
+                        {formatOsInfo(d.osInfo)}
                         {d.appVersion && <p>App v{d.appVersion}</p>}
                       </TableCell>
                       <TableCell><StatusBadge status={d.status} /></TableCell>

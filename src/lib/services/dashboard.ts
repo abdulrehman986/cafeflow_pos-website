@@ -6,8 +6,26 @@ import { LICENSE_EXPIRING_SOON_DAYS } from "@/lib/constants";
 
 // ─────────────────────── Admin dashboard ───────────────────────
 
+/**
+ * Short-TTL in-process cache for admin aggregates. Every admin metric is a
+ * SQL aggregation (never raw rows), and caching for 60s keeps bursty admin
+ * traffic from re-running the full-platform scans on every page view during
+ * high-sales periods. Admin metrics tolerate a minute of staleness.
+ */
+const AGGREGATE_TTL_MS = 60_000;
+const aggregateCache = new Map<string, { at: number; value: unknown }>();
+
+async function cachedAggregate<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const hit = aggregateCache.get(key);
+  if (hit && Date.now() - hit.at < AGGREGATE_TTL_MS) return hit.value as T;
+  const value = await fn();
+  aggregateCache.set(key, { at: Date.now(), value });
+  return value;
+}
+
 export async function getAdminOverview() {
-  await refreshExpiredLicenses();
+  return cachedAggregate("admin-overview", async () => {
+    await refreshExpiredLicenses();
 
   const now = new Date();
   const todayStart = startOfDayUTC(now);
@@ -87,83 +105,92 @@ export async function getAdminOverview() {
       monthOrders: monthSalesAgg._count,
     },
   };
+  });
 }
 
 /** 14-day platform revenue trend for the admin chart.
  *  Aggregated in SQL (one row per day) — never ships raw sale rows to Node. */
 export async function getAdminSalesTrend(days = 14) {
-  const start = addDays(startOfDayUTC(new Date()), -(days - 1));
-  const rows = await db.$queryRaw<{ day: string; total: number }[]>`
-    SELECT DATE_FORMAT(saleDate, '%Y-%m-%d') AS day, SUM(total) AS total
-    FROM sales
-    WHERE status = 'COMPLETED' AND saleDate >= ${start}
-    GROUP BY day`;
-  const totals = new Map(rows.map((r) => [r.day, Number(r.total)]));
-  return Array.from({ length: days }, (_, i) => {
-    const key = addDays(start, i).toISOString().slice(0, 10);
-    return { date: key, total: totals.get(key) ?? 0 };
+  return cachedAggregate(`admin-trend-${days}`, async () => {
+    const start = addDays(startOfDayUTC(new Date()), -(days - 1));
+    const rows = await db.$queryRaw<{ day: string; total: number }[]>`
+      SELECT DATE_FORMAT(saleDate, '%Y-%m-%d') AS day, SUM(total) AS total
+      FROM sales
+      WHERE status = 'COMPLETED' AND saleDate >= ${start}
+      GROUP BY day`;
+    const totals = new Map(rows.map((r) => [r.day, Number(r.total)]));
+    return Array.from({ length: days }, (_, i) => {
+      const key = addDays(start, i).toISOString().slice(0, 10);
+      return { date: key, total: totals.get(key) ?? 0 };
+    });
   });
 }
 
 /** Revenue split by payment method (admin overview donut). */
 export async function getAdminPaymentSplit() {
-  const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
-  const rows = await db.sale.groupBy({
-    by: ["paymentMethod"],
-    where: { status: "COMPLETED", saleDate: { gte: monthStart } },
-    _sum: { total: true },
-    _count: true,
+  return cachedAggregate("admin-payment-split", async () => {
+    const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+    const rows = await db.sale.groupBy({
+      by: ["paymentMethod"],
+      where: { status: "COMPLETED", saleDate: { gte: monthStart } },
+      _sum: { total: true },
+      _count: true,
+    });
+    return rows
+      .filter((r) => r.paymentMethod)
+      .map((r) => ({
+        method: r.paymentMethod as string,
+        total: r._sum.total ?? 0,
+        count: r._count,
+      }))
+      .sort((a, b) => b.total - a.total);
   });
-  return rows
-    .filter((r) => r.paymentMethod)
-    .map((r) => ({
-      method: r.paymentMethod as string,
-      total: r._sum.total ?? 0,
-      count: r._count,
-    }))
-    .sort((a, b) => b.total - a.total);
 }
 
 /** Top restaurants by revenue this month. */
 export async function getTopRestaurants(limit = 6) {
-  const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
-  const rows = await db.sale.groupBy({
-    by: ["restaurantId"],
-    where: { status: "COMPLETED", saleDate: { gte: monthStart } },
-    _sum: { total: true },
-    _count: true,
+  return cachedAggregate(`admin-top-restaurants-${limit}`, async () => {
+    const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+    const rows = await db.sale.groupBy({
+      by: ["restaurantId"],
+      where: { status: "COMPLETED", saleDate: { gte: monthStart } },
+      _sum: { total: true },
+      _count: true,
+    });
+    const ids = rows.map((r) => r.restaurantId);
+    const restaurants = ids.length
+      ? await db.restaurant.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, client: { select: { companyName: true } } } })
+      : [];
+    const nameById = new Map(restaurants.map((r) => [r.id, r]));
+    return rows
+      .map((r) => ({
+        name: nameById.get(r.restaurantId)?.name ?? "Unknown",
+        client: nameById.get(r.restaurantId)?.client.companyName ?? "—",
+        total: r._sum.total ?? 0,
+        orders: r._count,
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, limit);
   });
-  const ids = rows.map((r) => r.restaurantId);
-  const restaurants = ids.length
-    ? await db.restaurant.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, client: { select: { companyName: true } } } })
-    : [];
-  const nameById = new Map(restaurants.map((r) => [r.id, r]));
-  return rows
-    .map((r) => ({
-      name: nameById.get(r.restaurantId)?.name ?? "Unknown",
-      client: nameById.get(r.restaurantId)?.client.companyName ?? "—",
-      total: r._sum.total ?? 0,
-      orders: r._count,
-    }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, limit);
 }
 
 /** Top clients by revenue over the trailing `days` (reports ranking).
  *  One SQL aggregation — replaces loading every 30-day sale row into Node. */
 export async function getTopClientsByRevenue(days = 30, limit = 10) {
-  const since = new Date(Date.now() - days * 86400000);
-  const rows = await db.$queryRaw<{ id: string; companyName: string; revenue: number }[]>`
-    SELECT c.id, c.companyName, SUM(s.total) AS revenue
-    FROM clients c
-    JOIN restaurants r ON r.clientId = c.id
-    JOIN sales s ON s.restaurantId = r.id
-      AND s.status = 'COMPLETED' AND s.saleDate >= ${since}
-    GROUP BY c.id, c.companyName
-    HAVING SUM(s.total) > 0
-    ORDER BY revenue DESC
-    LIMIT ${limit}`;
-  return rows.map((r) => ({ id: r.id, name: r.companyName, revenue: Number(r.revenue) }));
+  return cachedAggregate(`admin-top-clients-${days}-${limit}`, async () => {
+    const since = new Date(Date.now() - days * 86400000);
+    const rows = await db.$queryRaw<{ id: string; companyName: string; revenue: number }[]>`
+      SELECT c.id, c.companyName, SUM(s.total) AS revenue
+      FROM clients c
+      JOIN restaurants r ON r.clientId = c.id
+      JOIN sales s ON s.restaurantId = r.id
+        AND s.status = 'COMPLETED' AND s.saleDate >= ${since}
+      GROUP BY c.id, c.companyName
+      HAVING SUM(s.total) > 0
+      ORDER BY revenue DESC
+      LIMIT ${limit}`;
+    return rows.map((r) => ({ id: r.id, name: r.companyName, revenue: Number(r.revenue) }));
+  });
 }
 
 // ─────────────────────── Client dashboard ───────────────────────
@@ -355,7 +382,8 @@ export async function listSales(opts: {
   return { rows, total, sum: sum._sum.total ?? 0, page: opts.page, pageSize: opts.pageSize };
 }
 
-/** Paginated orders list with filters. Same scoping rules as listSales. */
+/** Paginated orders list with filters. Same scoping rules as listSales.
+ *  `deviceId` narrows to one POS terminal (used by the shift-order filter). */
 export async function listOrders(opts: {
   restaurantIds?: string[];
   page: number;
@@ -364,6 +392,7 @@ export async function listOrders(opts: {
   to?: Date;
   status?: string;
   search?: string;
+  deviceId?: string;
 }) {
   const where = {
     ...(opts.restaurantIds?.length ? { restaurantId: { in: opts.restaurantIds } } : {}),
@@ -371,6 +400,7 @@ export async function listOrders(opts: {
       ? { orderDate: { ...(opts.from ? { gte: opts.from } : {}), ...(opts.to ? { lte: opts.to } : {}) } }
       : {}),
     ...(opts.status ? { status: opts.status } : {}),
+    ...(opts.deviceId ? { deviceId: opts.deviceId } : {}),
     ...(opts.search
       ? { OR: [{ orderNumber: { contains: opts.search } }, { localOrderId: { contains: opts.search } }] }
       : {}),
@@ -412,12 +442,14 @@ export async function getPosSyncOverview() {
  *  (device token used in the last 24h) and records synced in the last 24h.
  *  Counts only — no per-shift or per-expense rows leave the aggregate layer. */
 export async function getAdminTerminalActivity() {
-  const since = new Date(Date.now() - 24 * 3600 * 1000);
-  const [activeTerminals, totalTerminals, shifts24h, expenses24h] = await Promise.all([
-    db.device.count({ where: { status: "ACTIVE", lastSeenAt: { gte: since } } }),
-    db.device.count({ where: { status: "ACTIVE" } }),
-    db.shift.count({ where: { syncedAt: { gte: since } } }),
-    db.expense.count({ where: { syncedAt: { gte: since } } }),
-  ]);
-  return { activeTerminals, totalTerminals, shifts24h, expenses24h };
+  return cachedAggregate("admin-terminal-activity", async () => {
+    const since = new Date(Date.now() - 24 * 3600 * 1000);
+    const [activeTerminals, totalTerminals, shifts24h, expenses24h] = await Promise.all([
+      db.device.count({ where: { status: "ACTIVE", lastSeenAt: { gte: since } } }),
+      db.device.count({ where: { status: "ACTIVE" } }),
+      db.shift.count({ where: { syncedAt: { gte: since } } }),
+      db.expense.count({ where: { syncedAt: { gte: since } } }),
+    ]);
+    return { activeTerminals, totalTerminals, shifts24h, expenses24h };
+  });
 }

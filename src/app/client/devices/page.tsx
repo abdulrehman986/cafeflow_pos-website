@@ -4,7 +4,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { PageHeader, EmptyState } from "@/components/shared/table-kit";
 import { requireClientPage } from "@/lib/auth/guards";
 import { getClientDevicesScoped } from "@/lib/services/restaurants";
-import { fmtDate, fmtDateTime } from "@/lib/format";
+import { fmtDate, fmtDateTime, formatOsInfo } from "@/lib/format";
 import { MonitorSmartphone } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +56,7 @@ export default async function ClientDevicesPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">OS</span>
-                    <span className="text-xs">{d.osInfo ?? "Windows"}</span>
+                    <span className="text-xs">{formatOsInfo(d.osInfo)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Activated</span>

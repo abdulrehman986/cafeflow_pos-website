@@ -19,7 +19,6 @@ import {
   Store,
   KeyRound,
   AlertTriangle,
-  CalendarClock,
   Banknote,
   TrendingUp,
   ArrowRight,
@@ -28,6 +27,7 @@ import {
   Receipt,
   Wallet,
   MonitorSmartphone,
+  Coins,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -92,16 +92,16 @@ export default async function AdminDashboardPage() {
           icon={TrendingUp}
         />
         <StatCard
-          title="Expiring within 30 days"
-          value={formatNumber(overview.licenses.expiringSoon)}
-          sub="Review and extend before expiry"
-          icon={CalendarClock}
-          tone="warning"
+          title="Average order (month)"
+          value={formatRs(overview.sales.monthOrders ? overview.sales.month / overview.sales.monthOrders : 0)}
+          sub="Synced revenue per order this month"
+          icon={Coins}
+          tone="info"
         />
         <StatCard
           title="Expired licenses"
           value={formatNumber(overview.licenses.expired)}
-          sub="POS terminals may enter grace period"
+          sub={`${formatNumber(overview.licenses.expiringSoon)} expiring within 30 days`}
           icon={AlertTriangle}
           tone={overview.licenses.expired > 0 ? "danger" : "default"}
         />

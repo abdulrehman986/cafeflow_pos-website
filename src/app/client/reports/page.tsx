@@ -11,7 +11,7 @@ import { requireClientPage } from "@/lib/auth/guards";
 import { getSalesSeries, getPaymentSplit } from "@/lib/services/dashboard";
 import { getTerminalBreakdown, listShifts, getActiveTerminals } from "@/lib/services/shifts";
 import { db } from "@/lib/db";
-import { formatRs, formatNumber, fmtDate } from "@/lib/format";
+import { formatRs, formatNumber, fmtDate, shiftRef } from "@/lib/format";
 import { Banknote, Receipt, MonitorSmartphone, Clock, TrendingUp } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -281,7 +281,7 @@ export default async function ClientReportsPage({
                   <TableRow key={s.id}>
                     <TableCell>
                       <Link href={`/client/restaurants/${s.restaurantId}/shifts/${s.id}`} className="text-sm font-medium hover:text-primary">
-                        <code>{s.shiftNumber != null ? `#${s.shiftNumber}` : s.localShiftId.slice(0, 10)}</code>
+                        <code>{shiftRef(s.localShiftId, s.openedAt)}</code>
                       </Link>
                     </TableCell>
                     <TableCell className="text-sm">{s.restaurant.name}</TableCell>

@@ -9,7 +9,7 @@ import { PageHeader, EmptyState } from "@/components/shared/table-kit";
 import { requireClientPage } from "@/lib/auth/guards";
 import { getShiftDetail } from "@/lib/services/shifts";
 import { db } from "@/lib/db";
-import { formatRs, formatNumber, fmtDateTime, fmtTime } from "@/lib/format";
+import { formatRs, formatNumber, fmtDateTime, fmtTime, shiftRef } from "@/lib/format";
 import {
   Banknote,
   Clock,
@@ -54,11 +54,11 @@ export default async function ClientRestaurantShiftDetailPage({
         <span>/</span>
         <Link href={`/client/restaurants/${id}/shifts`} className="hover:text-foreground">Shifts</Link>
         <span>/</span>
-        <span className="text-foreground font-medium">{shift.shiftNumber != null ? `#${shift.shiftNumber}` : "Detail"}</span>
+        <span className="text-foreground font-medium">{shiftRef(shift.localShiftId, shift.openedAt)}</span>
       </div>
 
       <PageHeader
-        title={`Shift ${shift.shiftNumber != null ? `#${shift.shiftNumber}` : ""}`}
+        title={shiftRef(shift.localShiftId, shift.openedAt)}
         description={`${shift.restaurant.name} · ${fmtDateTime(shift.openedAt)} → ${fmtDateTime(shift.closedAt)}`}
       />
 

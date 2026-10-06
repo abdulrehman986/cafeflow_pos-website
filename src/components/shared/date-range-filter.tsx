@@ -71,43 +71,57 @@ export function DateRangeFilter() {
   );
 }
 
-/** Preset range chips (7/30 days, this month). */
+/** Preset range chips — UTC-aligned with the server's day boundaries. */
 export function DatePresets() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
 
-  function preset(days: number) {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const utcToday = () => {
+    const n = new Date();
+    return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+  };
+
+  const PRESETS: Array<{ key: string; label: string; range: () => [Date, Date] }> = [
+    { key: "today", label: "Today", range: () => { const t = utcToday(); return [t, t]; } },
+    { key: "yesterday", label: "Yesterday", range: () => { const y = new Date(utcToday().getTime() - 86400000); return [y, y]; } },
+    { key: "7d", label: "Last 7 days", range: () => { const t = utcToday(); return [new Date(t.getTime() - 6 * 86400000), t]; } },
+    { key: "30d", label: "Last 30 days", range: () => { const t = utcToday(); return [new Date(t.getTime() - 29 * 86400000), t]; } },
+    { key: "90d", label: "Last 90 days", range: () => { const t = utcToday(); return [new Date(t.getTime() - 89 * 86400000), t]; } },
+    { key: "month", label: "This month", range: () => { const n = new Date(); return [new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), 1)), utcToday()]; } },
+    { key: "year", label: "This year", range: () => { const n = new Date(); return [new Date(Date.UTC(n.getUTCFullYear(), 0, 1)), utcToday()]; } },
+  ];
+
+  function apply(key: string) {
+    const p = PRESETS.find((x) => x.key === key);
+    if (!p) return;
+    const [from, to] = p.range();
     const next = new URLSearchParams(params.toString());
-    const to = new Date();
-    const from = new Date(to.getTime() - days * 86400000);
-    next.set("from", from.toISOString().slice(0, 10));
-    next.set("to", to.toISOString().slice(0, 10));
+    next.set("from", iso(from));
+    next.set("to", iso(to));
     next.delete("page");
     router.replace(`${pathname}?${next.toString()}`);
   }
 
-  const active = (days: number) => {
-    const from = params.get("from");
-    const to = params.get("to");
-    if (!from || !to) return false;
-    const diff = (new Date(to).getTime() - new Date(from).getTime()) / 86400000;
-    return Math.abs(diff - days) < 1.5 && new Date(to).toDateString() === new Date().toDateString();
-  };
-
   return (
     <div className="flex flex-wrap gap-2">
-      {[7, 30, 90].map((d) => (
-        <Button
-          key={d}
-          size="sm"
-          variant={active(d) ? "default" : "outline"}
-          className="h-8 text-xs"
-          onClick={() => preset(d)}
-        >
-          Last {d} days
-        </Button>
-      ))}
+      {PRESETS.map((p) => {
+        const [from, to] = p.range();
+        const active =
+          params.get("from") === iso(from) && params.get("to") === iso(to);
+        return (
+          <Button
+            key={p.key}
+            size="sm"
+            variant={active ? "default" : "outline"}
+            className="h-8 text-xs"
+            onClick={() => apply(p.key)}
+          >
+            {p.label}
+          </Button>
+        );
+      })}
     </div>
   );
 }

@@ -41,3 +41,36 @@ export function startOfDayUTC(d: Date): Date {
 export function addDays(d: Date, days: number): Date {
   return new Date(d.getTime() + days * 86400000);
 }
+
+/**
+ * Stable, date-embedded shift reference shared by the web and the POS:
+ * `SH-YYYYMMDD-XXXX` — UTC opening date (matches the app's UTC daily
+ * aggregation) plus the last 4 alphanumeric chars of the local shift id,
+ * so both apps derive the exact same code from synced data alone.
+ */
+export function shiftRef(localShiftId: string, openedAt: Date): string {
+  const day = openedAt.toISOString().slice(0, 10).replace(/-/g, "");
+  const suffix =
+    (localShiftId.replace(/[^A-Za-z0-9]/g, "").slice(-4) || "0000").toUpperCase();
+  return `SH-${day}-${suffix}`;
+}
+
+/**
+ * Professional OS label. POS versions before terminal attribution sent the
+ * raw user-agent as osInfo — parse those into a clean label; newer values
+ * (e.g. "Windows 11 (64-bit)") pass through untouched.
+ */
+export function formatOsInfo(os: string | null | undefined): string {
+  if (!os) return "—";
+  if (!/Mozilla\/|AppleWebKit|Gecko\/|Safari\//.test(os)) return os;
+  const bitness = /Win64|x64|WOW64|arm64|aarch64/.test(os) ? "64-bit" : null;
+  let platform = "Unknown OS";
+  if (/Windows NT 10\.0/.test(os)) platform = "Windows 10/11";
+  else if (/Windows/.test(os)) platform = "Windows";
+  else if (/Android [\d.]+/.test(os)) platform = "Android";
+  else if (/iPhone|iPad/.test(os)) platform = "iOS";
+  else if (/Mac OS X/.test(os)) platform = "macOS";
+  else if (/CrOS/.test(os)) platform = "ChromeOS";
+  else if (/Linux/.test(os)) platform = "Linux";
+  return bitness ? `${platform} · ${bitness}` : platform;
+}
