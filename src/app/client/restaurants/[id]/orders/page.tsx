@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge, PaymentBadge } from "@/components/shared/status-badge";
 import { PageHeader, EmptyState } from "@/components/shared/table-kit";
+import { RestaurantTabs } from "@/components/client/restaurant-tabs";
 import { UrlPagination } from "@/components/shared/filter-toolbar";
 import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-filter";
 import { requireClientPage, assertRestaurantAccess } from "@/lib/auth/guards";
@@ -56,6 +57,8 @@ export default async function ClientRestaurantOrdersPage({
         <span>/</span>
         <span className="text-foreground font-medium">Orders</span>
       </div>
+
+      <RestaurantTabs restaurantId={id} active="orders" />
 
       <PageHeader
         title={`Orders · ${restaurant.name}`}

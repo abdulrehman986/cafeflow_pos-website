@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge, PaymentBadge } from "@/components/shared/status-badge";
 import { PageHeader, EmptyState } from "@/components/shared/table-kit";
+import { RestaurantTabs } from "@/components/client/restaurant-tabs";
 import { UrlPagination } from "@/components/shared/filter-toolbar";
 import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-filter";
 import { SalesTrendChart } from "@/components/dashboard/charts";
@@ -57,6 +58,8 @@ export default async function ClientRestaurantSalesPage({
         <span>/</span>
         <span className="text-foreground font-medium">Sales</span>
       </div>
+
+      <RestaurantTabs restaurantId={id} active="sales" />
 
       <PageHeader
         title={`Sales · ${restaurant.name}`}

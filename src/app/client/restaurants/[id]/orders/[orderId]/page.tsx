@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge, PaymentBadge } from "@/components/shared/status-badge";
 import { PageHeader } from "@/components/shared/table-kit";
+import { RestaurantTabs } from "@/components/client/restaurant-tabs";
 import { requireClientPage, assertRestaurantAccess } from "@/lib/auth/guards";
 import { db } from "@/lib/db";
 import { formatRs, fmtDate, fmtTime, fmtDateTime } from "@/lib/format";
@@ -41,6 +42,8 @@ export default async function ClientOrderDetailPage({
         <span>/</span>
         <span className="text-foreground font-medium">{order.orderNumber}</span>
       </div>
+
+      <RestaurantTabs restaurantId={id} active="orders" />
 
       <PageHeader
         title={`Order ${order.orderNumber}`}

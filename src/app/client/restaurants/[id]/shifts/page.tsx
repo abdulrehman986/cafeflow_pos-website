@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
 import { PageHeader, EmptyState } from "@/components/shared/table-kit";
+import { RestaurantTabs } from "@/components/client/restaurant-tabs";
 import { UrlPagination } from "@/components/shared/filter-toolbar";
 import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-filter";
 import { CashDiffBadge } from "@/components/shared/cash-diff-badge";
@@ -49,6 +50,8 @@ export default async function ClientRestaurantShiftsPage({
         <span>/</span>
         <span className="text-foreground font-medium">Shifts</span>
       </div>
+
+      <RestaurantTabs restaurantId={id} active="shifts" />
 
       <PageHeader
         title={`Shifts · ${restaurant.name}`}

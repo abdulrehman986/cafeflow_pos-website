@@ -6,6 +6,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge, PaymentBadge } from "@/components/shared/status-badge";
 import { CashDiffBadge } from "@/components/shared/cash-diff-badge";
 import { PageHeader, EmptyState } from "@/components/shared/table-kit";
+import { RestaurantTabs } from "@/components/client/restaurant-tabs";
 import { requireClientPage } from "@/lib/auth/guards";
 import { getShiftDetail } from "@/lib/services/shifts";
 import { db } from "@/lib/db";
@@ -56,6 +57,8 @@ export default async function ClientRestaurantShiftDetailPage({
         <span>/</span>
         <span className="text-foreground font-medium">{shiftRef(shift.localShiftId, shift.openedAt)}</span>
       </div>
+
+      <RestaurantTabs restaurantId={id} active="shifts" />
 
       <PageHeader
         title={shiftRef(shift.localShiftId, shift.openedAt)}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PageHeader, EmptyState } from "@/components/shared/table-kit";
+import { RestaurantTabs } from "@/components/client/restaurant-tabs";
 import { SalesTrendChart } from "@/components/dashboard/charts";
 import { requireClientPage } from "@/lib/auth/guards";
 import { assertRestaurantAccess } from "@/lib/auth/guards";
@@ -17,11 +18,9 @@ import {
   Receipt,
   TrendingUp,
   Coins,
-  BarChart3,
   ChevronRight,
   CloudUpload,
   MonitorSmartphone,
-  Clock,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -81,28 +80,11 @@ export default async function ClientRestaurantDashboardPage({
         <span className="text-foreground font-medium truncate">{restaurant.name}</span>
       </div>
 
+      <RestaurantTabs restaurantId={id} active="dashboard" />
+
       <PageHeader
         title={restaurant.name}
         description="This restaurant's isolated workspace — sales, orders, license and devices."
-        actions={
-          <>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/client/restaurants/${id}/sales`}>
-                <BarChart3 className="h-4 w-4" /> Sales dashboard
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/client/restaurants/${id}/shifts`}>
-                <Clock className="h-4 w-4" /> Shifts
-              </Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href={`/client/restaurants/${id}/orders`}>
-                <Receipt className="h-4 w-4" /> Orders
-              </Link>
-            </Button>
-          </>
-        }
       />
 
       {lastSync && (
