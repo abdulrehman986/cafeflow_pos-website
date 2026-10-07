@@ -3,13 +3,17 @@
   "short_name": "CafeFlow",
   "description": "Restaurant POS cloud dashboard: sales, orders, shifts, terminals, licenses and reports.",
   "id": "/",
-  "start_url": "/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#f59e0b",
-  "categories": ["business", "productivity", "food"],
+  "categories": [
+    "business",
+    "productivity",
+    "food"
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",
