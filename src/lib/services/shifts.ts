@@ -19,13 +19,9 @@ export async function listShifts(opts: {
   pageSize: number;
   from?: Date;
   to?: Date;
-  restaurantId?: string;
 }) {
-  const scope = opts.restaurantId
-    ? { restaurantId: opts.restaurantId }
-    : { restaurantId: { in: opts.restaurantIds } };
   const where = {
-    ...scope,
+    restaurantId: { in: opts.restaurantIds },
     ...(opts.from || opts.to
       ? { openedAt: { ...(opts.from ? { gte: opts.from } : {}), ...(opts.to ? { lte: opts.to } : {}) } }
       : {}),

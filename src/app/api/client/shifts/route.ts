@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { ok, fail, handler } from "@/lib/api";
-import { requireClientApi } from "@/lib/auth/guards";
+import { requireClientApi, assertRestaurantAccess } from "@/lib/auth/guards";
 import { paginationSchema } from "@/lib/validators";
 import { db } from "@/lib/db";
 import { listShifts, getShiftDetail } from "@/lib/services/shifts";
@@ -18,7 +18,7 @@ export const GET = handler(async (req: NextRequest) => {
     where: { clientId: auth.user.clientId! },
     select: { id: true },
   });
-  const restaurantIds = restaurants.map((r) => r.id);
+  let restaurantIds = restaurants.map((r) => r.id);
 
   const url = new URL(req.url);
   const shiftId = url.searchParams.get("shiftId");
@@ -34,6 +34,13 @@ export const GET = handler(async (req: NextRequest) => {
   });
   if (!parsed.success) return fail("VALIDATION_ERROR", "Invalid pagination parameters.");
 
+  const requestedRestaurantId = url.searchParams.get("restaurantId");
+  if (requestedRestaurantId) {
+    const access = await assertRestaurantAccess(auth.user, requestedRestaurantId);
+    if (!access.ok) return access.response;
+    restaurantIds = [requestedRestaurantId];
+  }
+
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
   const result = await listShifts({
@@ -42,7 +49,6 @@ export const GET = handler(async (req: NextRequest) => {
     pageSize: parsed.data.pageSize,
     ...(from ? { from: new Date(from + "T00:00:00Z") } : {}),
     ...(to ? { to: new Date(to + "T23:59:59Z") } : {}),
-    restaurantId: url.searchParams.get("restaurantId") ?? undefined,
   });
   return ok(result);
 });
