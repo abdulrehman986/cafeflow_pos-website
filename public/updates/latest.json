@@ -1,11 +1,11 @@
 {
-  "version": "1.0.0",
-  "notes": "CafeFlow 1.0.0",
+  "version": "1.0.1",
+  "notes": "CafeFlow 1.0.1",
   "pub_date": "2026-10-01T05:55:27.209Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTmJzbm90YkhkSFdTdC9VSTdHaWVDaVRKZzhrK3pZZGZRaTJwU0hWSFdTUENWbWpxT2pZRDFXdEw4Z2pxeUJqaU4raHlaMVVMRnBmWTluYVdTQ0ZKcE03eFp3UUdDVndrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwODM0MTAyCWZpbGU6Q2FmZUZsb3dfMS4wLjBfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjEuMC4wClZ0Nzl5aWJRSUN0QUt4azRtUU1CZnVoVUV3Z1RmenVQNjNXZ2d1WlFXSkxNWENiU1NKOU9RanA2amZaZ3MyUXptdWJ0NkJuRllFREFTd040M2JpVkRnPT0K",
-      "url": "https://cafe.example.com/updates/CafeFlow_1.0.0_x64-setup.exe"
+      "url": "https://cafeflowsite.vercel.app/updates/CafeFlow_1.0.1_x64-setup.exe"
     }
   }
 }
