@@ -99,62 +99,60 @@ export async function getAdminOverview() {
       total: Number(b?.total ?? 0),
     },
     sales: {
-      today: todaySalesAgg._sum.total ?? 0,
       todayOrders: todaySalesAgg._count,
-      month: monthSalesAgg._sum.total ?? 0,
       monthOrders: monthSalesAgg._count,
     },
   };
   });
 }
 
-/** 14-day platform revenue trend for the admin chart.
+/** Daily order-volume series for the whole platform (admin dashboard chart).
+ *  Counts only — client revenue never appears on the admin side.
  *  Aggregated in SQL (one row per day) — never ships raw sale rows to Node. */
-export async function getAdminSalesTrend(days = 14) {
-  return cachedAggregate(`admin-trend-${days}`, async () => {
+export async function getAdminOrderTrend(days = 14) {
+  return cachedAggregate(`admin-order-trend-${days}`, async () => {
     const start = addDays(startOfDayUTC(new Date()), -(days - 1));
-    const rows = await db.$queryRaw<{ day: string; total: number }[]>`
-      SELECT DATE_FORMAT(saleDate, '%Y-%m-%d') AS day, SUM(total) AS total
+    const rows = await db.$queryRaw<{ day: string; orders: bigint | number }[]>`
+      SELECT DATE_FORMAT(saleDate, '%Y-%m-%d') AS day, COUNT(*) AS orders
       FROM sales
       WHERE status = 'COMPLETED' AND saleDate >= ${start}
       GROUP BY day`;
-    const totals = new Map(rows.map((r) => [r.day, Number(r.total)]));
+    const counts = new Map(rows.map((r) => [r.day, Number(r.orders)]));
     return Array.from({ length: days }, (_, i) => {
       const key = addDays(start, i).toISOString().slice(0, 10);
-      return { date: key, total: totals.get(key) ?? 0 };
+      return { date: key, orders: counts.get(key) ?? 0 };
     });
   });
 }
 
-/** Revenue split by payment method (admin overview donut). */
-export async function getAdminPaymentSplit() {
-  return cachedAggregate("admin-payment-split", async () => {
+/** Order split by payment method this month (admin donut/bar).
+ *  Counts only — no revenue leaves the aggregate layer. */
+export async function getAdminPaymentOrdersSplit() {
+  return cachedAggregate("admin-payment-orders-split", async () => {
     const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
     const rows = await db.sale.groupBy({
       by: ["paymentMethod"],
       where: { status: "COMPLETED", saleDate: { gte: monthStart } },
-      _sum: { total: true },
       _count: true,
     });
     return rows
       .filter((r) => r.paymentMethod)
       .map((r) => ({
         method: r.paymentMethod as string,
-        total: r._sum.total ?? 0,
         count: r._count,
       }))
-      .sort((a, b) => b.total - a.total);
+      .sort((a, b) => b.count - a.count);
   });
 }
 
-/** Top restaurants by revenue this month. */
+/** Top restaurants by order volume this month (admin).
+ *  Counts only — client revenue is never exposed on the admin side. */
 export async function getTopRestaurants(limit = 6) {
   return cachedAggregate(`admin-top-restaurants-${limit}`, async () => {
     const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
     const rows = await db.sale.groupBy({
       by: ["restaurantId"],
       where: { status: "COMPLETED", saleDate: { gte: monthStart } },
-      _sum: { total: true },
       _count: true,
     });
     const ids = rows.map((r) => r.restaurantId);
@@ -166,30 +164,29 @@ export async function getTopRestaurants(limit = 6) {
       .map((r) => ({
         name: nameById.get(r.restaurantId)?.name ?? "Unknown",
         client: nameById.get(r.restaurantId)?.client.companyName ?? "—",
-        total: r._sum.total ?? 0,
         orders: r._count,
       }))
-      .sort((a, b) => b.total - a.total)
+      .sort((a, b) => b.orders - a.orders)
       .slice(0, limit);
   });
 }
 
-/** Top clients by revenue over the trailing `days` (reports ranking).
+/** Top clients by order volume over the trailing `days` (reports ranking).
  *  One SQL aggregation — replaces loading every 30-day sale row into Node. */
-export async function getTopClientsByRevenue(days = 30, limit = 10) {
-  return cachedAggregate(`admin-top-clients-${days}-${limit}`, async () => {
+export async function getTopClientsByOrders(days = 30, limit = 10) {
+  return cachedAggregate(`admin-top-clients-orders-${days}-${limit}`, async () => {
     const since = new Date(Date.now() - days * 86400000);
-    const rows = await db.$queryRaw<{ id: string; companyName: string; revenue: number }[]>`
-      SELECT c.id, c.companyName, SUM(s.total) AS revenue
+    const rows = await db.$queryRaw<{ id: string; companyName: string; orders: bigint | number }[]>`
+      SELECT c.id, c.companyName, COUNT(*) AS orders
       FROM clients c
       JOIN restaurants r ON r.clientId = c.id
       JOIN sales s ON s.restaurantId = r.id
         AND s.status = 'COMPLETED' AND s.saleDate >= ${since}
       GROUP BY c.id, c.companyName
-      HAVING SUM(s.total) > 0
-      ORDER BY revenue DESC
+      HAVING COUNT(*) > 0
+      ORDER BY orders DESC
       LIMIT ${limit}`;
-    return rows.map((r) => ({ id: r.id, name: r.companyName, revenue: Number(r.revenue) }));
+    return rows.map((r) => ({ id: r.id, name: r.companyName, orders: Number(r.orders) }));
   });
 }
 

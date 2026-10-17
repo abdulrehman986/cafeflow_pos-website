@@ -132,3 +132,101 @@ export function PaymentMethodChart({
     </div>
   );
 }
+
+/** Daily ORDER-COUNT area chart for the admin side — platform-wide order
+ *  volume. Revenue deliberately never charts on the admin side (client data
+ *  privacy); client pages use SalesTrendChart for their own sales. */
+export function OrdersTrendChart({
+  data,
+}: {
+  data: Array<{ date: string; orders: number }>;
+}) {
+  const points = data.map((d) => ({
+    ...d,
+    label: format(new Date(d.date + "T00:00:00"), "d MMM"),
+  }));
+  return (
+    <div className="h-72 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="ordersFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={BRAND} stopOpacity={0.32} />
+              <stop offset="100%" stopColor={BRAND} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_STROKE} />
+          <XAxis dataKey="label" tick={AXIS_TICK} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+          <YAxis
+            tick={AXIS_TICK}
+            tickLine={false}
+            axisLine={false}
+            width={56}
+            allowDecimals={false}
+            tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
+          />
+          <Tooltip
+            formatter={(value: number | string) => [`${Number(value).toLocaleString("en-PK")} orders`, "Orders"]}
+            contentStyle={TOOLTIP_STYLE}
+            labelStyle={TOOLTIP_LABEL_STYLE}
+            cursor={{ stroke: BRAND, strokeOpacity: 0.25 }}
+          />
+          <Area type="monotone" dataKey="orders" stroke={BRAND} strokeWidth={2} fill="url(#ordersFill)" />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Order-COUNT split by payment method for the admin side — no revenue. */
+export function PaymentMethodOrdersChart({
+  data,
+}: {
+  data: Array<{ method: string; count: number }>;
+}) {
+  if (!data.length) {
+    return (
+      <div className="h-72 grid place-items-center text-sm text-muted-foreground">
+        No payment data yet
+      </div>
+    );
+  }
+  return (
+    <div className="h-72 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_STROKE} />
+          <XAxis
+            dataKey="method"
+            tick={AXIS_TICK}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(m: string) => m.charAt(0) + m.slice(1).toLowerCase()}
+          />
+          <YAxis
+            tick={AXIS_TICK}
+            tickLine={false}
+            axisLine={false}
+            width={56}
+            allowDecimals={false}
+            tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
+          />
+          <Tooltip
+            formatter={(value: number | string) => [
+              `${Number(value).toLocaleString("en-PK")} orders`,
+              "Orders",
+            ]}
+            contentStyle={TOOLTIP_STYLE}
+            labelStyle={TOOLTIP_LABEL_STYLE}
+            cursor={{ fill: BRAND, fillOpacity: 0.08 }}
+          />
+          <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={56}>
+            {data.map((d) => (
+              <Cell key={d.method} fill={METHOD_COLORS[d.method] ?? "var(--muted-foreground)"} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
