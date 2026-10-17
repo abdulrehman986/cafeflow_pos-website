@@ -9,8 +9,9 @@ import { RestaurantTabs } from "@/components/client/restaurant-tabs";
 import { UrlPagination } from "@/components/shared/filter-toolbar";
 import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-filter";
 import { CashDiffBadge } from "@/components/shared/cash-diff-badge";
+import { OpenShiftCard } from "@/components/client/open-shift-card";
 import { requireClientPage, assertRestaurantAccess } from "@/lib/auth/guards";
-import { listShifts } from "@/lib/services/shifts";
+import { listShifts, getOpenShifts } from "@/lib/services/shifts";
 import { formatRs, formatNumber, fmtDateTime, fmtTime, shiftRef } from "@/lib/format";
 import { Clock, Banknote, Receipt, Wallet, ChevronRight } from "lucide-react";
 
@@ -38,7 +39,10 @@ export default async function ClientRestaurantShiftsPage({
   const from = sp.from ? new Date(sp.from + "T00:00:00Z") : undefined;
   const to = sp.to ? new Date(sp.to + "T23:59:59Z") : undefined;
 
-  const result = await listShifts({ restaurantIds: [id], page, pageSize: PAGE_SIZE, from, to });
+  const [result, openShifts] = await Promise.all([
+    listShifts({ restaurantIds: [id], page, pageSize: PAGE_SIZE, from, to }),
+    getOpenShifts([{ id, name: restaurant.name }]),
+  ]);
   const avgNet = result.total > 0 ? result.sumNet / result.total : 0;
 
   return (
@@ -55,7 +59,12 @@ export default async function ClientRestaurantShiftsPage({
 
       <PageHeader
         title={`Shifts · ${restaurant.name}`}
-        description="Completed shift reconciliations uploaded by your POS terminals, with full cash-drawer detail."
+        description="Completed shift reconciliations uploaded by your POS terminals, with full cash-drawer detail — plus the shift currently open on its terminal."
+      />
+
+      <OpenShiftCard
+        openShifts={openShifts}
+        ordersHrefBase={`/client/restaurants/${id}/orders`}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
