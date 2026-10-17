@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getCurrentLicense } from "./licenses";
 import { sha256 } from "@/lib/auth/password";
 import { signDeviceToken } from "@/lib/auth/jwt";
-import { LICENSE_GRACE_PERIOD_DAYS } from "@/lib/constants";
+import { LICENSE_GRACE_PERIOD_HOURS } from "@/lib/constants";
 
 /**
  * POS integration service.
@@ -608,7 +608,7 @@ export function licenseVerificationPayload(ctx: PosContext) {
   const now = new Date();
   const daysRemaining = Math.max(0, Math.ceil((ctx.license.expiresAt.getTime() - now.getTime()) / 86400000));
   const lastVerified = ctx.license.lastVerifiedAt ?? now;
-  const daysSinceVerification = Math.floor((now.getTime() - lastVerified.getTime()) / 86400000);
+  const hoursSinceVerification = (now.getTime() - lastVerified.getTime()) / 3_600_000;
   return {
     licenseKey: ctx.license.licenseKey,
     status: ctx.license.status,
@@ -617,10 +617,13 @@ export function licenseVerificationPayload(ctx: PosContext) {
     maxDevices: ctx.license.maxDevices,
     restaurant: { id: ctx.restaurant.id, name: ctx.restaurant.name },
     offlineGrace: {
-      // POS may keep operating within this window without connectivity
-      gracePeriodDays: LICENSE_GRACE_PERIOD_DAYS,
-      daysSinceLastVerification: daysSinceVerification,
-      withinGracePeriod: daysSinceVerification <= LICENSE_GRACE_PERIOD_DAYS,
+      // POS may keep operating within this window without connectivity;
+      // beyond it the POS blocks login until it verifies again.
+      gracePeriodHours: LICENSE_GRACE_PERIOD_HOURS,
+      // Kept for older POS builds that still read the days field (rounds up).
+      gracePeriodDays: 1,
+      hoursSinceLastVerification: Math.floor(hoursSinceVerification),
+      withinGracePeriod: hoursSinceVerification <= LICENSE_GRACE_PERIOD_HOURS,
     },
     serverTime: now.toISOString(),
   };

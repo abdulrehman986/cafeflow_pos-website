@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: "What happens to the POS if the license expires while offline?",
-    a: "The POS caches license state locally and continues operating through a configurable grace period (default 14 days) without connectivity. The web server remains the source of truth — once online, verification updates the cached state, and expiring licenses surface warnings in the client dashboard.",
+    a: "The POS caches license state locally and continues operating through a 24-hour offline grace period without connectivity. The web server remains the source of truth — once online, verification updates the cached state, and expiring licenses surface warnings in the client dashboard.",
   },
   {
     q: "Can I access sales data from my phone or tablet?",

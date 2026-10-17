@@ -26,7 +26,8 @@ export const POST = handler(async (req: NextRequest) => {
       // Verification refreshes the license's lastVerifiedAt (server = source of truth)
       await db.license.update({ where: { id: ctx.license.id }, data: { lastVerifiedAt: new Date() } });
       const payload = licenseVerificationPayload(ctx);
-      payload.offlineGrace.daysSinceLastVerification = 0;
+      payload.offlineGrace.hoursSinceLastVerification = 0;
+      payload.offlineGrace.withinGracePeriod = true;
       return ok(payload);
     } catch (e) {
       if (e instanceof PosError) return fail(e.code as never, e.message);

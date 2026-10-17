@@ -29,8 +29,10 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 /** A license counts as "expiring soon" within this window. */
 export const LICENSE_EXPIRING_SOON_DAYS = 30;
-/** POS offline grace period: how long a license stays usable without a successful verification. */
-export const LICENSE_GRACE_PERIOD_DAYS = 14;
+/** POS offline grace period: how long a license stays usable without a
+ *  successful verification. Exactly 24 hours — beyond this the POS blocks
+ *  login until it can reach the server again. */
+export const LICENSE_GRACE_PERIOD_HOURS = 24;
 
 export const SESSION_COOKIE = "cf_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
