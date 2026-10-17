@@ -11,8 +11,8 @@ import { UrlPagination } from "@/components/shared/filter-toolbar";
 import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-filter";
 import { requireClientPage, assertRestaurantAccess } from "@/lib/auth/guards";
 import { listOrders } from "@/lib/services/dashboard";
-import { formatRs, formatNumber, fmtDate, fmtTime } from "@/lib/format";
-import { Receipt, Banknote, ChevronRight } from "lucide-react";
+import { formatRs, formatNumber, fmtDate, fmtTime, startOfDayUTC } from "@/lib/format";
+import { Receipt, Banknote, ChevronRight, CalendarClock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ export default async function ClientRestaurantOrdersPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string; to?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; page?: string }>;
 }) {
   const user = await requireClientPage();
   const { id } = await params;
@@ -35,8 +35,16 @@ export default async function ClientRestaurantOrdersPage({
 
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
-  const from = sp.from ? new Date(sp.from + "T00:00:00Z") : undefined;
-  const to = sp.to ? new Date(sp.to + "T23:59:59Z") : undefined;
+  let from = sp.from ? new Date(sp.from + "T00:00:00Z") : undefined;
+  let to = sp.to ? new Date(sp.to + "T23:59:59Z") : undefined;
+
+  // Default to Today — never aggregate all-time so the page stays fast as
+  // the order history grows. Every synced order is final (no status filter).
+  if (!from && !to) {
+    const today = startOfDayUTC(new Date());
+    from = today;
+    to = new Date(today.getTime() + 86_399_000);
+  }
 
   const result = await listOrders({
     restaurantIds: [id],
@@ -44,9 +52,16 @@ export default async function ClientRestaurantOrdersPage({
     pageSize: PAGE_SIZE,
     from,
     to,
-    status: sp.status,
   });
-  const avg = result.total > 0 ? result.sum / result.total : 0;
+
+  const rangeLabel = from && to
+    ? `${fmtDate(from)} – ${fmtDate(to)}`
+    : from
+      ? `Since ${fmtDate(from)}`
+      : "All time";
+  const dayCount = from
+    ? Math.max(1, Math.round(((to ?? new Date()).getTime() - from.getTime()) / 86_400_000) + 1)
+    : null;
 
   return (
     <>
@@ -66,9 +81,14 @@ export default async function ClientRestaurantOrdersPage({
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Filtered order value" value={formatRs(result.sum)} icon={Banknote} tone="positive" />
-        <StatCard title="Orders" value={formatNumber(result.total)} icon={Receipt} />
-        <StatCard title="Average order" value={formatRs(avg)} icon={ChevronRight} />
+        <StatCard title="Sales" value={formatRs(result.sum)} sub={rangeLabel} icon={Banknote} tone="positive" />
+        <StatCard title="Orders" value={formatNumber(result.total)} sub={rangeLabel} icon={Receipt} />
+        <StatCard
+          title="Avg orders / day"
+          value={dayCount ? (result.total / dayCount).toFixed(1) : "—"}
+          sub={rangeLabel}
+          icon={CalendarClock}
+        />
       </div>
 
       <Suspense>

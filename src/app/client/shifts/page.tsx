@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
 import { PageHeader, EmptyState } from "@/components/shared/table-kit";
@@ -8,7 +8,7 @@ import { UrlPagination } from "@/components/shared/filter-toolbar";
 import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-filter";
 import { CashDiffBadge } from "@/components/shared/cash-diff-badge";
 import { requireClientPage } from "@/lib/auth/guards";
-import { listShifts } from "@/lib/services/shifts";
+import { listShifts, getOpenShifts } from "@/lib/services/shifts";
 import { db } from "@/lib/db";
 import { formatRs, formatNumber, fmtDateTime, fmtTime, shiftRef } from "@/lib/format";
 import { Clock, Banknote, Receipt, Wallet, ChevronRight } from "lucide-react";
@@ -17,7 +17,8 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 15;
 
-/** Completed shifts across ALL of the owner's restaurants. */
+/** Completed shift reconciliations across ALL of the owner's restaurants,
+ *  plus a live view of the shift currently open on each terminal. */
 export default async function ClientShiftsPage({
   searchParams,
 }: {
@@ -27,7 +28,7 @@ export default async function ClientShiftsPage({
 
   const restaurants = await db.restaurant.findMany({
     where: { clientId: user.clientId! },
-    select: { id: true },
+    select: { id: true, name: true },
     orderBy: { createdAt: "asc" },
   });
 
@@ -36,21 +37,94 @@ export default async function ClientShiftsPage({
   const from = sp.from ? new Date(sp.from + "T00:00:00Z") : undefined;
   const to = sp.to ? new Date(sp.to + "T23:59:59Z") : undefined;
 
-  const result = await listShifts({
-    restaurantIds: restaurants.map((r) => r.id),
-    page,
-    pageSize: PAGE_SIZE,
-    from,
-    to,
-  });
+  const [result, openShifts] = await Promise.all([
+    listShifts({
+      restaurantIds: restaurants.map((r) => r.id),
+      page,
+      pageSize: PAGE_SIZE,
+      from,
+      to,
+    }),
+    getOpenShifts(restaurants),
+  ]);
   const avgNet = result.total > 0 ? result.sumNet / result.total : 0;
 
   return (
     <>
       <PageHeader
         title="Shifts"
-        description="Completed shift reconciliations across all your restaurants, with cash-drawer detail."
+        description="Completed shift reconciliations across all your restaurants, with cash-drawer detail — plus the shift currently open on each terminal."
       />
+
+      {/* Live open shift — inferred from orders synced since the last closed
+          shift. Cash-drawer figures only exist once the POS closes the shift. */}
+      {openShifts.length > 0 && (
+        <Card className="border-emerald-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              </span>
+              Currently open shift
+            </CardTitle>
+            <CardDescription>
+              Live totals from orders synced since the last closed shift. Opening/closing
+              cash and the cash-drawer difference appear here once the terminal closes the
+              shift and it syncs.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Restaurant</TableHead>
+                    <TableHead>Activity since</TableHead>
+                    <TableHead>Last order</TableHead>
+                    <TableHead className="text-center">Orders so far</TableHead>
+                    <TableHead className="text-right">Sales so far</TableHead>
+                    <TableHead className="w-12" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {openShifts.map((s) => (
+                    <TableRow key={s.restaurantId}>
+                      <TableCell className="text-sm font-medium">{s.restaurantName}</TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {fmtTime(s.since)}
+                        {s.lastClosedAt && (
+                          <span className="text-xs text-muted-foreground">
+                            {" "}· since last close {fmtDateTime(s.lastClosedAt)}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm whitespace-nowrap text-muted-foreground">
+                        {fmtDateTime(s.lastOrderAt)}
+                      </TableCell>
+                      <TableCell className="text-center text-sm font-semibold tabular-nums">
+                        {s.orderCount}
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-semibold tabular-nums">
+                        {formatRs(s.netSales)}
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/client/orders?from=${s.since.toISOString().slice(0, 10)}`}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"
+                          aria-label={`View live orders for ${s.restaurantName}`}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard title="Shifts" value={formatNumber(result.total)} icon={Clock} />

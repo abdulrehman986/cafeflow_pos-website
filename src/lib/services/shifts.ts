@@ -13,6 +13,65 @@ export type ShiftListRow = Prisma.ShiftGetPayload<{
   include: { restaurant: { select: { id: true; name: true } }; device: { select: { deviceName: true; deviceIdentifier: true } } };
 }>;
 
+export interface OpenShiftView {
+  restaurantId: string;
+  restaurantName: string;
+  /** Close time of the last synced shift — null when no shift ever closed. */
+  lastClosedAt: Date | null;
+  /** First order after the last close — the inferred open time of the live shift. */
+  since: Date;
+  lastOrderAt: Date;
+  orderCount: number;
+  netSales: number;
+}
+
+/**
+ * Derive each restaurant's currently-OPEN shift. The POS uploads a shift only
+ * when it closes, so the live shift cannot exist in the shifts table — but its
+ * orders sync in real time. Everything an order synced AFTER the latest closed
+ * shift belongs to the shift that is still open.
+ *
+ * Two bounded queries per restaurant (aggregate + first-order lookup), never a
+ * full-history scan from the app side.
+ */
+export async function getOpenShifts(
+  restaurants: Array<{ id: string; name: string }>,
+): Promise<OpenShiftView[]> {
+  if (!restaurants.length) return [];
+  const lastShifts = await db.shift.groupBy({
+    by: ["restaurantId"],
+    where: { restaurantId: { in: restaurants.map((r) => r.id) } },
+    _max: { closedAt: true },
+  });
+
+  const views = await Promise.all(
+    restaurants.map(async (restaurant) => {
+      const lastClosedAt =
+        lastShifts.find((s) => s.restaurantId === restaurant.id)?._max.closedAt ?? null;
+      const where = {
+        restaurantId: restaurant.id,
+        ...(lastClosedAt ? { orderDate: { gt: lastClosedAt } } : {}),
+      };
+      const [agg, firstOrder] = await Promise.all([
+        db.order.aggregate({ where, _count: true, _sum: { total: true }, _max: { orderDate: true } }),
+        db.order.findFirst({ where, orderBy: { orderDate: "asc" }, select: { orderDate: true } }),
+      ]);
+      // No orders since the last close = no open shift right now.
+      if (!agg._count || !firstOrder || !agg._max.orderDate) return null;
+      return {
+        restaurantId: restaurant.id,
+        restaurantName: restaurant.name,
+        lastClosedAt,
+        since: firstOrder.orderDate,
+        lastOrderAt: agg._max.orderDate,
+        orderCount: agg._count,
+        netSales: agg._sum.total ?? 0,
+      } satisfies OpenShiftView;
+    }),
+  );
+  return views.filter((v) => v !== null);
+}
+
 export async function listShifts(opts: {
   restaurantIds: string[];
   page: number;

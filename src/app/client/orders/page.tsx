@@ -10,19 +10,21 @@ import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-fil
 import { requireClientPage } from "@/lib/auth/guards";
 import { listOrders } from "@/lib/services/dashboard";
 import { db } from "@/lib/db";
-import { formatRs, formatNumber, fmtDate, fmtTime, shiftRef } from "@/lib/format";
-import { Receipt, Banknote, ChevronRight, Clock, X } from "lucide-react";
+import { formatRs, formatNumber, fmtDate, fmtTime, shiftRef, startOfDayUTC } from "@/lib/format";
+import { Receipt, Banknote, ChevronRight, Clock, X, CalendarClock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 15;
 
-/** Order history across ALL of the owner's restaurants, filterable by status,
- *  date range and — for shift-wise review — by a specific POS shift. */
+/** Order history across ALL of the owner's restaurants, filterable by date
+ *  range and — for shift-wise review — by a specific POS shift. Every synced
+ *  order is final (the POS never uploads pending/refunded states), so there
+ *  is no status filter. */
 export default async function ClientOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; status?: string; q?: string; shift?: string; page?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; q?: string; shift?: string; page?: string }>;
 }) {
   const user = await requireClientPage();
 
@@ -50,6 +52,15 @@ export default async function ClientOrdersPage({
     to = activeShift.closedAt;
   }
 
+  // Default the window to Today when nothing is selected — the page must
+  // never aggregate all-time, or every visit gets slower as years of data
+  // accumulate. All presets below stay day-bounded too.
+  if (!from && !to) {
+    const today = startOfDayUTC(new Date());
+    from = today;
+    to = new Date(today.getTime() + 86_399_000);
+  }
+
   const [result, recentShifts] = await Promise.all([
     listOrders({
       restaurantIds,
@@ -57,7 +68,6 @@ export default async function ClientOrdersPage({
       pageSize: PAGE_SIZE,
       from,
       to,
-      status: sp.status,
       search: sp.q,
       deviceId: activeShift?.deviceId ?? undefined,
     }),
@@ -71,13 +81,17 @@ export default async function ClientOrdersPage({
         })
       : Promise.resolve([]),
   ]);
-  const avg = result.total > 0 ? result.sum / result.total : 0;
 
   const rangeLabel = activeShift
     ? `Shift ${shiftRef(activeShift.localShiftId, activeShift.openedAt)}`
     : from && to
       ? `${fmtDate(from)} – ${fmtDate(to)}`
-      : "All time";
+      : from
+        ? `Since ${fmtDate(from)}`
+        : "All time";
+  const dayCount = from
+    ? Math.max(1, Math.round(((to ?? new Date()).getTime() - from.getTime()) / 86_400_000) + 1)
+    : null;
 
   // Group rows by day so long ranges stay scannable
   const groups: Array<{ day: string; rows: typeof result.rows }> = [];
@@ -96,25 +110,20 @@ export default async function ClientOrdersPage({
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Filtered order value" value={formatRs(result.sum)} sub={rangeLabel} icon={Banknote} tone="positive" />
+        <StatCard title="Sales" value={formatRs(result.sum)} sub={rangeLabel} icon={Banknote} tone="positive" />
         <StatCard title="Orders" value={formatNumber(result.total)} sub={rangeLabel} icon={Receipt} />
-        <StatCard title="Average order" value={formatRs(avg)} sub={rangeLabel} icon={ChevronRight} />
+        <StatCard
+          title="Avg orders / day"
+          value={dayCount ? (result.total / dayCount).toFixed(1) : "—"}
+          sub={rangeLabel}
+          icon={CalendarClock}
+        />
       </div>
 
       <Suspense>
         <FilterToolbar
           searchPlaceholder="Search order number…"
           filters={[
-            {
-              key: "status",
-              placeholder: "All statuses",
-              options: [
-                { value: "COMPLETED", label: "Completed" },
-                { value: "PENDING", label: "Pending" },
-                { value: "REFUNDED", label: "Refunded" },
-                { value: "CANCELLED", label: "Cancelled" },
-              ],
-            },
             {
               key: "shift",
               placeholder: "All shifts",
