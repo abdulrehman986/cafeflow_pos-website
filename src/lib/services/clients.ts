@@ -78,13 +78,14 @@ export interface ClientDetail {
     id: string; name: string; city: string | null; status: string; createdAt: Date;
     license: { id: string; licenseKey: string; status: string; expiresAt: Date; maxDevices: number; activatedAt: Date | null; lastVerifiedAt: Date | null } | null;
     deviceCount: number; activeDevices: number;
-    todaySales: number; monthSales: number; totalOrders: number; lastSyncAt: Date | null;
+    todayOrders: number; monthOrders: number; d30Orders: number; totalOrders: number; lastSyncAt: Date | null;
   }>;
   devices: Array<{
     id: string; deviceIdentifier: string; deviceName: string | null; status: string;
     restaurant: string; licenseKey: string; activatedAt: Date; lastSeenAt: Date | null;
   }>;
-  salesSummary: { today: number; month: number; total: number; last30: number; orderCount: number };
+  /** Order counts only — client revenue is never exposed on the admin side. */
+  salesSummary: { todayOrders: number; monthOrders: number; last30Orders: number; totalOrders: number };
   accounts: Array<{ id: string; email: string; fullName: string; lastLoginAt: Date | null; isActive: boolean }>;
 }
 
@@ -106,39 +107,32 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
     },
   });
 
-  // Aggregate sales metrics in SQL — client detail must never load raw
-  // transaction rows (admin sees aggregates only, and rows scale unbounded).
+  // Aggregate order counts in SQL — client detail must never load raw
+  // transaction rows, and revenue totals are intentionally NOT computed
+  // here (client data privacy: the admin side only sees order volume).
   const restaurantIds = restaurants.map((r) => r.id);
-  const salesAgg = restaurantIds.length
-    ? await db.sale.groupBy({
-        by: ["restaurantId"],
-        where: { restaurantId: { in: restaurantIds }, status: "COMPLETED" },
-        _sum: { total: true },
-        _count: true,
-      })
-    : [];
   const [todayAgg, monthAgg, d30Agg, totalAgg] = await Promise.all([
     restaurantIds.length
       ? db.sale.groupBy({
           by: ["restaurantId"],
           where: { restaurantId: { in: restaurantIds }, status: "COMPLETED", saleDate: { gte: todayStart } },
-          _sum: { total: true },
+          _count: true,
         })
-      : Promise.resolve([] as Array<{ restaurantId: string; _sum: { total: number | null } }>),
+      : Promise.resolve([] as Array<{ restaurantId: string; _count: number }>),
     restaurantIds.length
       ? db.sale.groupBy({
           by: ["restaurantId"],
           where: { restaurantId: { in: restaurantIds }, status: "COMPLETED", saleDate: { gte: monthStart } },
-          _sum: { total: true },
+          _count: true,
         })
-      : Promise.resolve([] as Array<{ restaurantId: string; _sum: { total: number | null } }>),
+      : Promise.resolve([] as Array<{ restaurantId: string; _count: number }>),
     restaurantIds.length
       ? db.sale.groupBy({
           by: ["restaurantId"],
           where: { restaurantId: { in: restaurantIds }, status: "COMPLETED", saleDate: { gte: d30 } },
-          _sum: { total: true },
+          _count: true,
         })
-      : Promise.resolve([] as Array<{ restaurantId: string; _sum: { total: number | null } }>),
+      : Promise.resolve([] as Array<{ restaurantId: string; _count: number }>),
     restaurantIds.length
       ? db.order.groupBy({
           by: ["restaurantId"],
@@ -159,10 +153,9 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
     select: { id: true, email: true, fullName: true, lastLoginAt: true, isActive: true },
   });
 
-  const lifetimeByRestaurant = new Map(salesAgg.map((r) => [r.restaurantId, r._sum.total ?? 0]));
-  const todayByRestaurant = new Map(todayAgg.map((r) => [r.restaurantId, r._sum.total ?? 0]));
-  const monthByRestaurant = new Map(monthAgg.map((r) => [r.restaurantId, r._sum.total ?? 0]));
-  const d30ByRestaurant = new Map(d30Agg.map((r) => [r.restaurantId, r._sum.total ?? 0]));
+  const todayByRestaurant = new Map(todayAgg.map((r) => [r.restaurantId, r._count]));
+  const monthByRestaurant = new Map(monthAgg.map((r) => [r.restaurantId, r._count]));
+  const d30ByRestaurant = new Map(d30Agg.map((r) => [r.restaurantId, r._count]));
   const ordersByRestaurant = new Map(totalAgg.map((r) => [r.restaurantId, r._count]));
   const sumOf = (m: Map<string, number>) => Array.from(m.values()).reduce((a, v) => a + v, 0);
 
@@ -184,8 +177,9 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
           : null,
         deviceCount: r.devices.length,
         activeDevices: r.devices.filter((d) => d.status === "ACTIVE").length,
-        todaySales: todayByRestaurant.get(r.id) ?? 0,
-        monthSales: monthByRestaurant.get(r.id) ?? 0,
+        todayOrders: todayByRestaurant.get(r.id) ?? 0,
+        monthOrders: monthByRestaurant.get(r.id) ?? 0,
+        d30Orders: d30ByRestaurant.get(r.id) ?? 0,
         totalOrders: ordersByRestaurant.get(r.id) ?? 0,
         lastSyncAt: r.syncLogs[0]?.createdAt ?? null,
       };
@@ -196,11 +190,10 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
       activatedAt: d.activatedAt, lastSeenAt: d.lastSeenAt,
     })),
     salesSummary: {
-      today: sumOf(todayByRestaurant),
-      month: sumOf(monthByRestaurant),
-      total: sumOf(lifetimeByRestaurant),
-      last30: sumOf(d30ByRestaurant),
-      orderCount: Array.from(ordersByRestaurant.values()).reduce((a, v) => a + v, 0),
+      todayOrders: sumOf(todayByRestaurant),
+      monthOrders: sumOf(monthByRestaurant),
+      last30Orders: sumOf(d30ByRestaurant),
+      totalOrders: Array.from(ordersByRestaurant.values()).reduce((a, v) => a + v, 0),
     },
     accounts,
   };

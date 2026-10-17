@@ -31,16 +31,17 @@ import {
 import { getClientDetail } from "@/lib/services/clients";
 import { getSessionUser } from "@/lib/auth/session";
 import { getActiveGrant } from "@/lib/services/support";
-import { formatRs, formatNumber, fmtDate, fmtDateTime } from "@/lib/format";
+import { formatNumber, fmtDate, fmtDateTime } from "@/lib/format";
 import { licenseEffectiveStatus } from "@/lib/license-key";
 import {
-  Banknote,
   Store,
   KeyRound,
   MonitorSmartphone,
   Building2,
   ArrowRight,
-  TrendingUp,
+  Activity,
+  ShoppingCart,
+  CalendarCheck,
   Mail,
   Phone,
   CalendarDays,
@@ -169,28 +170,29 @@ export default async function AdminClientDetailPage({
         </CardContent>
       </Card>
 
-      {/* Sales summary */}
+      {/* Order activity — counts only, never client revenue (data privacy) */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          title="Today's sales"
-          value={formatRs(salesSummary.today)}
-          icon={Banknote}
+          title="Orders today"
+          value={formatNumber(salesSummary.todayOrders)}
+          icon={ShoppingCart}
           tone="positive"
         />
         <StatCard
-          title="This month"
-          value={formatRs(salesSummary.month)}
-          icon={TrendingUp}
+          title="Avg orders / day"
+          value={(salesSummary.last30Orders / 30).toFixed(1)}
+          sub="last 30 days"
+          icon={Activity}
         />
         <StatCard
-          title="Last 30 days"
-          value={formatRs(salesSummary.last30)}
-          icon={TrendingUp}
+          title="Orders this month"
+          value={formatNumber(salesSummary.monthOrders)}
+          icon={CalendarCheck}
         />
         <StatCard
-          title="Lifetime synced sales"
-          value={formatRs(salesSummary.total)}
-          sub={`${formatNumber(salesSummary.orderCount)} records`}
+          title="Lifetime synced orders"
+          value={formatNumber(salesSummary.totalOrders)}
+          sub="across all restaurants"
           icon={Store}
         />
       </div>
@@ -227,8 +229,8 @@ export default async function AdminClientDetailPage({
                     <TableHead>License</TableHead>
                     <TableHead>Expiry</TableHead>
                     <TableHead className="text-center">Devices</TableHead>
-                    <TableHead className="text-right">Today</TableHead>
-                    <TableHead className="text-right">This month</TableHead>
+                    <TableHead className="text-right">Orders today</TableHead>
+                    <TableHead className="text-right">Avg / day (30d)</TableHead>
                     <TableHead>Last sync</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -290,10 +292,10 @@ export default async function AdminClientDetailPage({
                           {r.activeDevices}/{r.license?.maxDevices ?? 0}
                         </TableCell>
                         <TableCell className="text-right text-sm tabular-nums">
-                          {formatRs(r.todaySales)}
+                          {formatNumber(r.todayOrders)}
                         </TableCell>
                         <TableCell className="text-right text-sm tabular-nums">
-                          {formatRs(r.monthSales)}
+                          {(r.d30Orders / 30).toFixed(1)}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {r.lastSyncAt ? fmtDateTime(r.lastSyncAt) : "Never"}
