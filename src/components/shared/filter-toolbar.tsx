@@ -106,6 +106,48 @@ export function FilterToolbar({
   );
 }
 
+/** A single URL-driven select filter, without the search box — for pages
+ *  that have nothing to text-search but still need e.g. a restaurant picker. */
+export function SelectFilter({
+  filterKey,
+  placeholder,
+  options,
+  className = "w-full sm:w-[220px]",
+}: {
+  filterKey: string;
+  placeholder: string;
+  options: Option[];
+  className?: string;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+
+  function setFilter(value: string) {
+    const next = new URLSearchParams(params.toString());
+    if (value && value !== "ALL") next.set(filterKey, value);
+    else next.delete(filterKey);
+    next.delete("page");
+    router.replace(`${pathname}?${next.toString()}`);
+  }
+
+  return (
+    <Select value={params.get(filterKey) ?? "ALL"} onValueChange={setFilter}>
+      <SelectTrigger className={className} aria-label={placeholder}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="ALL">{placeholder}</SelectItem>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 /** Pagination for server-rendered tables — pushes page into the URL. */
 export function UrlPagination({
   page,

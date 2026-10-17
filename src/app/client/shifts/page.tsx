@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
 import { PageHeader, EmptyState } from "@/components/shared/table-kit";
-import { UrlPagination } from "@/components/shared/filter-toolbar";
+import { UrlPagination, SelectFilter } from "@/components/shared/filter-toolbar";
 import { DateRangeFilter, DatePresets } from "@/components/shared/date-range-filter";
 import { CashDiffBadge } from "@/components/shared/cash-diff-badge";
 import { requireClientPage } from "@/lib/auth/guards";
@@ -22,7 +22,7 @@ const PAGE_SIZE = 15;
 export default async function ClientShiftsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; page?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; restaurant?: string; page?: string }>;
 }) {
   const user = await requireClientPage();
 
@@ -37,15 +37,22 @@ export default async function ClientShiftsPage({
   const from = sp.from ? new Date(sp.from + "T00:00:00Z") : undefined;
   const to = sp.to ? new Date(sp.to + "T23:59:59Z") : undefined;
 
+  // Restaurant scope: "All restaurants" by default, or one specific location
+  // (validated against the client's own restaurants — never trust the URL).
+  const selectedRestaurant = restaurants.find((r) => r.id === sp.restaurant) ?? null;
+  const restaurantIds = selectedRestaurant
+    ? [selectedRestaurant.id]
+    : restaurants.map((r) => r.id);
+
   const [result, openShifts] = await Promise.all([
     listShifts({
-      restaurantIds: restaurants.map((r) => r.id),
+      restaurantIds,
       page,
       pageSize: PAGE_SIZE,
       from,
       to,
     }),
-    getOpenShifts(restaurants),
+    getOpenShifts(selectedRestaurant ? [selectedRestaurant] : restaurants),
   ]);
   const avgNet = result.total > 0 ? result.sumNet / result.total : 0;
 
@@ -53,8 +60,26 @@ export default async function ClientShiftsPage({
     <>
       <PageHeader
         title="Shifts"
-        description="Completed shift reconciliations across all your restaurants, with cash-drawer detail — plus the shift currently open on each terminal."
+        description={
+          selectedRestaurant
+            ? `Shift reconciliations for ${selectedRestaurant.name}, with cash-drawer detail — plus the shift currently open on its terminal.`
+            : "Completed shift reconciliations across all your restaurants, with cash-drawer detail — plus the shift currently open on each terminal."
+        }
       />
+
+      <Suspense>
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+          <DatePresets />
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+            <SelectFilter
+              filterKey="restaurant"
+              placeholder="All restaurants"
+              options={restaurants.map((r) => ({ value: r.id, label: r.name }))}
+            />
+            <DateRangeFilter />
+          </div>
+        </div>
+      </Suspense>
 
       {/* Live open shift — inferred from orders synced since the last closed
           shift. Cash-drawer figures only exist once the POS closes the shift. */}
@@ -132,13 +157,6 @@ export default async function ClientShiftsPage({
         <StatCard title="Gross sales (filtered)" value={formatRs(result.sumGross)} icon={Wallet} />
         <StatCard title="Average net / shift" value={formatRs(avgNet)} icon={Receipt} />
       </div>
-
-      <Suspense>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
-          <DatePresets />
-          <DateRangeFilter />
-        </div>
-      </Suspense>
 
       <Card>
         <CardContent className="p-0">

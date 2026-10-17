@@ -24,19 +24,26 @@ const PAGE_SIZE = 15;
 export default async function ClientOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; q?: string; shift?: string; page?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; q?: string; shift?: string; restaurant?: string; page?: string }>;
 }) {
   const user = await requireClientPage();
 
   const restaurants = await db.restaurant.findMany({
     where: { clientId: user.clientId! },
-    select: { id: true },
+    select: { id: true, name: true },
     orderBy: { createdAt: "asc" },
   });
-  const restaurantIds = restaurants.map((r) => r.id);
 
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+
+  // Restaurant scope: "All restaurants" by default, or one specific location
+  // (validated against the client's own restaurants — never trust the URL).
+  const selectedRestaurant = restaurants.find((r) => r.id === sp.restaurant) ?? null;
+  const restaurantIds = selectedRestaurant
+    ? [selectedRestaurant.id]
+    : restaurants.map((r) => r.id);
+
   let from = sp.from ? new Date(sp.from + "T00:00:00Z") : undefined;
   let to = sp.to ? new Date(sp.to + "T23:59:59Z") : undefined;
 
@@ -106,7 +113,11 @@ export default async function ClientOrdersPage({
     <>
       <PageHeader
         title="Orders"
-        description="Order history across all your restaurants, synced from your POS terminals."
+        description={
+          selectedRestaurant
+            ? `Order history for ${selectedRestaurant.name}, synced from its POS terminals.`
+            : "Order history across all your restaurants, synced from your POS terminals."
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -124,6 +135,14 @@ export default async function ClientOrdersPage({
         <FilterToolbar
           searchPlaceholder="Search order number…"
           filters={[
+            {
+              key: "restaurant",
+              placeholder: "All restaurants",
+              options: restaurants.map((r) => ({
+                value: r.id,
+                label: r.name,
+              })),
+            },
             {
               key: "shift",
               placeholder: "All shifts",
