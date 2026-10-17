@@ -174,6 +174,15 @@ export const posVerifySchema = z.object({
   appVersion: z.string().trim().max(40).optional(),
 });
 
+/** Device profile refresh — the POS pushes its current name/OS/version here
+ *  after an in-app rename (and once per session) so the dashboards always
+ *  show the terminal's real name without waiting for a re-activation. */
+export const posDeviceProfileSchema = z.object({
+  deviceName: z.string().trim().min(1).max(100),
+  osInfo: z.string().trim().max(150).optional(),
+  appVersion: z.string().trim().max(40).optional(),
+});
+
 export const posSaleRecordSchema = z.object({
   localSaleId: z.string().min(1, "localSaleId is required").max(64),
   saleNumber: z.string().max(40).optional(),
